@@ -17,7 +17,11 @@
 
 #include "vmlinux_arm64.h"
 
-#endif /*__TARGET_ARCH_arm64*/
+#elif defined(__TARGET_ARCH_s390)
+
+#include "vmlinux_s390x.h"
+
+#endif /*__TARGET_ARCH_s390*/
 
 #pragma clang diagnostic pop
 
