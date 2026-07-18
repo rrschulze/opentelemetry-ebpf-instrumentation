@@ -24,7 +24,7 @@ func TestNewFactory(t *testing.T) {
 // a clear error when a receiver is created — consistent with the journaldreceiver
 // pattern used in opentelemetry-collector-contrib.
 func TestNewFactoryUnsupportedPlatform(t *testing.T) {
-	supported := runtime.GOOS == "linux" && (runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64")
+	supported := runtime.GOOS == "linux" && (runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" || runtime.GOARCH == "s390x")
 	if supported {
 		t.Skip("skipping unsupported-platform test on a supported platform")
 	}

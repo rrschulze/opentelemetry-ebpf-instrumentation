@@ -127,7 +127,7 @@ func TestTCPLargeBuffers(t *testing.T) {
 
 func toRingbufRecord(t *testing.T, event TCPLargeBufferHeader, buf string) *ringbuf.Record {
 	var fixedPart bytes.Buffer
-	if err := binary.Write(&fixedPart, binary.LittleEndian, event); err != nil {
+	if err := binary.Write(&fixedPart, binary.NativeEndian, event); err != nil {
 		t.Fatalf("failed to write ringbuf record fixed part: %v", err)
 	}
 
