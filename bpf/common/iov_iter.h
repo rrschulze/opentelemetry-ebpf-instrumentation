@@ -30,7 +30,17 @@ struct iov_iter___dummy {
 
 typedef struct iov_iter___dummy iovec_iter_ctx;
 
+// Guard against redefinition of ITER_UBUF when it is already declared in
+// vmlinux.h (e.g. kernel >= 6.0 on s390x). The CO-RE relocation strips the
+// ___dummy suffix so the check still resolves against enum iter_type at BPF
+// load time.
+#if !defined(__TARGET_ARCH_s390)
 enum iter_type___dummy { ITER_UBUF };
+#else
+// On s390x with kernel >= 6.0 vmlinux.h already provides ITER_UBUF inside
+// enum iter_type; alias the dummy so the CO-RE lookups below still compile.
+#define iter_type___dummy iter_type
+#endif
 
 // extracts kernel specific iov_iter information into a iovec_iter_ctx instance
 static __always_inline void get_iovec_ctx(iovec_iter_ctx *ctx, struct iov_iter___dummy *iov_iter) {
