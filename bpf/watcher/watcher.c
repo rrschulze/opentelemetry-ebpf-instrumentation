@@ -31,7 +31,7 @@ int obi_kprobe_sys_bind(struct pt_regs *ctx) {
     // unwrap the args because it's a sys call
     struct pt_regs *__ctx = (struct pt_regs *)PT_REGS_PARM1(ctx);
     void *addr;
-    bpf_probe_read(&addr, sizeof(void *), (void *)&PT_REGS_PARM2(__ctx));
+    bpf_probe_read_user(&addr, sizeof(void *), (void *)&PT_REGS_PARM2(__ctx));
 
     if (!addr) {
         return 0;
