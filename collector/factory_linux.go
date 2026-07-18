@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build linux && (amd64 || arm64)
+//go:build linux && (amd64 || arm64 || s390x)
 
 package collector // import "go.opentelemetry.io/obi/collector"
 

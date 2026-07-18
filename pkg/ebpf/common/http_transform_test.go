@@ -197,7 +197,7 @@ func TestToRequestTrace(t *testing.T) {
 	copy(record.Buf[:], "GET /hello HTTP/1.1\r\nHost: example.com\r\n\r\n")
 
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, &record)
+	err := binary.Write(buf, binary.NativeEndian, &record)
 	require.NoError(t, err)
 
 	result, _, err := ReadHTTPInfoIntoSpan(nil, &ringbuf.Record{RawSample: buf.Bytes()}, &fltr)
@@ -236,7 +236,7 @@ func TestToRequestTraceNoConnection(t *testing.T) {
 	copy(record.Buf[:], "GET /hello HTTP/1.1\r\nHost: localhost:7033\r\n\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n")
 
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, &record)
+	err := binary.Write(buf, binary.NativeEndian, &record)
 	require.NoError(t, err)
 
 	result, _, err := ReadHTTPInfoIntoSpan(nil, &ringbuf.Record{RawSample: buf.Bytes()}, &fltr)
@@ -278,7 +278,7 @@ func TestToRequestTrace_BadHost(t *testing.T) {
 	copy(record.Buf[:], "GET /hello HTTP/1.1\r\nHost: example.c")
 
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, &record)
+	err := binary.Write(buf, binary.NativeEndian, &record)
 	require.NoError(t, err)
 
 	result, _, err := ReadHTTPInfoIntoSpan(nil, &ringbuf.Record{RawSample: buf.Bytes()}, &fltr)
@@ -621,7 +621,7 @@ func TestToRequestTraceLargeBuffers(t *testing.T) {
 			}
 
 			buf := new(bytes.Buffer)
-			err := binary.Write(buf, binary.LittleEndian, &record)
+			err := binary.Write(buf, binary.NativeEndian, &record)
 			require.NoError(t, err)
 
 			result, _, err := ReadHTTPInfoIntoSpan(pctx, &ringbuf.Record{RawSample: buf.Bytes()}, &fltr)
