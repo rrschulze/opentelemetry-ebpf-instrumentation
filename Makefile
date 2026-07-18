@@ -72,6 +72,11 @@ PROJECT_DIR := $(shell dirname $(abspath $(firstword $(MAKEFILE_LIST))))
 # See: https://pkg.go.dev/github.com/cilium/ebpf/cmd/bpf2go
 export BPF2GO_MAKEBASE := $(PROJECT_DIR)
 
+# On systems where only a versioned llvm-strip is installed (e.g. Ubuntu 24.04/s390x
+# ships llvm-strip-18 but not the unversioned symlink), point bpf2go at the right
+# binary via its documented env var.  Auto-detect: prefer unversioned when it exists.
+export BPF2GO_STRIP := $(or $(shell command -v llvm-strip 2>/dev/null),$(shell command -v llvm-strip-18 2>/dev/null),$(shell command -v llvm-strip-17 2>/dev/null),$(shell command -v llvm-strip-16 2>/dev/null),llvm-strip)
+
 # Check that given variables are set and all have non-empty values,
 # die with an error otherwise.
 #
