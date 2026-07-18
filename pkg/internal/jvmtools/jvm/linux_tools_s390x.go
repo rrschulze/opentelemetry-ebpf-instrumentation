@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build linux && !s390x
+//go:build linux
 
 package jvm // import "go.opentelemetry.io/obi/pkg/internal/jvmtools/jvm"
 
@@ -18,7 +18,9 @@ type sembuf struct {
 	Flg int16
 }
 
-// System V semaphore operations for Linux
+// System V semaphore operations for Linux/s390x.
+// On s390x, SYS_SEMOP is absent; semop is implemented via semtimedop
+// with a nil timeout, which is semantically identical to semop.
 func semget(key, nsems, semflg int) (int, error) {
 	r1, _, errno := unix.Syscall(unix.SYS_SEMGET, uintptr(key), uintptr(nsems), uintptr(semflg))
 	if int(r1) == -1 {
@@ -32,7 +34,11 @@ func semop(semid int, sops []sembuf) error {
 		return errors.New("semop requires at least one operation")
 	}
 
-	_, _, errno := unix.Syscall(unix.SYS_SEMOP, uintptr(semid), uintptr(unsafe.Pointer(&sops[0])), uintptr(len(sops)))
+	_, _, errno := unix.Syscall6(unix.SYS_SEMTIMEDOP,
+		uintptr(semid),
+		uintptr(unsafe.Pointer(&sops[0])),
+		uintptr(len(sops)),
+		0, 0, 0)
 	if errno != 0 {
 		return errno
 	}
