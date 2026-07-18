@@ -51,7 +51,30 @@
 // https://github.com/golang/go/blob/master/src/cmd/compile/abi-internal.md#arm64-architecture
 #define GOROUTINE_PTR(x) ((void *)((PT_REGS_ARM64 *)(x))->regs[28])
 
-#endif /*defined(__TARGET_ARCH_arm64)*/
+
+#elif defined(__TARGET_ARCH_s390)
+
+// In s390x Go uses ABI0 (stack-based) calling convention so function
+// arguments are passed on the stack, not in registers.  However, at
+// uprobe entry the kernel fills user_pt_regs; here we expose the
+// system-call / C-ABI argument registers (R2-R10) which carry the
+// first arguments in generated stubs and runtime assembly.
+// The goroutine pointer is permanently held in R13.
+#define GO_PARAM1(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[2]))
+#define GO_PARAM2(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[3]))
+#define GO_PARAM3(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[4]))
+#define GO_PARAM4(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[5]))
+#define GO_PARAM5(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[6]))
+#define GO_PARAM6(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[7]))
+#define GO_PARAM7(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[8]))
+#define GO_PARAM8(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[9]))
+#define GO_PARAM9(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[10]))
+
+// In s390x, current goroutine is pointed by R13 according to
+// https://github.com/golang/go/blob/master/src/cmd/internal/obj/s390x/a.out.go
+#define GOROUTINE_PTR(x) ((void *)(((PT_REGS_S390 *)(x))->gprs[13]))
+
+#endif /*defined(__TARGET_ARCH_s390)*/
 
 #define bpf_clamp_umax(VAR, UMAX)                                                                  \
     asm volatile("if %0 <= %[max] goto +1\n"                                                       \
