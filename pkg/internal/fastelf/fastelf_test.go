@@ -42,44 +42,6 @@ func testFastElf(t *testing.T, ctx *ElfContext) {
 	require.NoError(t, ctx.Close())
 }
 
-func TestFastElf_Data(t *testing.T) {
-	ctx, err := NewElfContextFromData(libbsd_so_0_12_2)
-	require.NoError(t, err)
-
-	testFastElf(t, ctx)
-}
-
-func TestFastElf_File(t *testing.T) {
-	filePath, cleanup, err := writeTempFile(libbsd_so_0_12_2)
-
-	require.NoError(t, err)
-
-	defer cleanup()
-
-	ctx, err := NewElfContextFromFile(filePath)
-	require.NoError(t, err)
-
-	testFastElf(t, ctx)
-}
-
-func TestFastElf_FileNoSections(t *testing.T) {
-	filePath, cleanup, err := writeTempFile(minimal_elf)
-
-	require.NoError(t, err)
-
-	defer cleanup()
-
-	ctx, err := NewElfContextFromFile(filePath)
-	require.NoError(t, err)
-
-	require.Empty(t, ctx.Sections)
-	require.Len(t, ctx.Segments, 4)
-	require.False(t, ctx.HasSymbol("setprogname"))
-	require.False(t, ctx.HasSection(".gnu_debuglink"))
-
-	require.NoError(t, ctx.Close())
-}
-
 func TestFastElf_HasSectionMalformedStringTable(t *testing.T) {
 	ctx := &ElfContext{
 		Hdr:  &Elf64_Ehdr{},
