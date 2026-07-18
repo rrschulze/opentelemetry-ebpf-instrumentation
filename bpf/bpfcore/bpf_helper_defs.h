@@ -110,7 +110,15 @@ static long (*const bpf_map_delete_elem)(void *map, const void *key) = (void *)3
  * Returns
  * 	0 on success, or a negative error in case of failure.
  */
+#ifdef __TARGET_ARCH_s390
+/* On s390x, helper #4 (bpf_probe_read) is not permitted in kprobe programs
+ * by the verifier; use bpf_probe_read_kernel (helper #113) instead.
+ * The guard uses __TARGET_ARCH_s390 which is set by bpf2go/clang when
+ * compiling BPF C code for s390 targets. */
+static long (*const bpf_probe_read)(void *dst, __u32 size, const void *unsafe_ptr) = (void *)113;
+#else
 static long (*const bpf_probe_read)(void *dst, __u32 size, const void *unsafe_ptr) = (void *)4;
+#endif
 
 /*
  * bpf_ktime_get_ns
