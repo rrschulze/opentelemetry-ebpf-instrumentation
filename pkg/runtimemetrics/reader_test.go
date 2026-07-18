@@ -165,7 +165,7 @@ func TestSnapshotFromRingbuf(t *testing.T) {
 		Features:    export.FeatureApplicationRuntime,
 	}
 	var record bytes.Buffer
-	require.NoError(t, binary.Write(&record, binary.LittleEndian, goRuntimeMetricRawEvent{
+	require.NoError(t, binary.Write(&record, binary.NativeEndian, goRuntimeMetricRawEvent{
 		Type: EventTypeGoRuntimeMetric,
 		PID: goRuntimeMetricRawKey{
 			HostPID: 1000,
@@ -260,7 +260,7 @@ func TestQueueSenderSendsGoRuntimeSnapshots(t *testing.T) {
 		Features:    export.FeatureApplicationRuntime,
 	}
 	var record bytes.Buffer
-	require.NoError(t, binary.Write(&record, binary.LittleEndian, goRuntimeMetricRawEvent{
+	require.NoError(t, binary.Write(&record, binary.NativeEndian, goRuntimeMetricRawEvent{
 		Type: EventTypeGoRuntimeMetric,
 		PID: goRuntimeMetricRawKey{
 			UserPID: 123,
