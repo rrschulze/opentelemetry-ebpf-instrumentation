@@ -42,7 +42,7 @@ func TestReadGoKafkaGoRequestIntoSpanOperation(t *testing.T) {
 			copy(event.Topic[:], "test-topic")
 
 			var raw bytes.Buffer
-			require.NoError(t, binary.Write(&raw, binary.LittleEndian, event))
+			require.NoError(t, binary.Write(&raw, binary.NativeEndian, event))
 
 			span, ignore, err := ReadGoKafkaGoRequestIntoSpan(&ringbuf.Record{RawSample: raw.Bytes()})
 

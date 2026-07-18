@@ -57,7 +57,7 @@ func TestReadTCPRequestIntoSpan_SQLServerTrafficIsServerSpan(t *testing.T) {
 	ctx := NewEBPFParseContext(&cfg, nil, nil)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, r))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, r))
 	fltr := TestPidsFilter{services: map[app.PID]svc.Attrs{}}
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
@@ -81,7 +81,7 @@ func TestReadTCPRequestIntoSpan_PostgresStartupSetsDBNamespace(t *testing.T) {
 
 	readSpan := func(t *testing.T, r TCPRequestInfo) (request.Span, bool) {
 		binaryRecord := bytes.Buffer{}
-		require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, r))
+		require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, r))
 		span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 		require.NoError(t, err)
 		return span, ignore
@@ -147,7 +147,7 @@ func TestTCPReqParsing(t *testing.T) {
 	}()
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, r))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, r))
 	fltr := TestPidsFilter{services: map[app.PID]svc.Attrs{}}
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 	require.NoError(t, err)
@@ -202,7 +202,7 @@ func benchReadTCPRequestIntoSpanRandomGarbage(b *testing.B, heuristic bool) {
 		tri.ConnInfo.S_port = uint16(20000 + i)
 
 		binaryRecord := bytes.Buffer{}
-		require.NoError(b, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+		require.NoError(b, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 		records[i] = ringbuf.Record{RawSample: binaryRecord.Bytes()}
 	}
 
@@ -286,7 +286,7 @@ func TestReadTCPRequestIntoSpan_Overflow(t *testing.T) {
 	cfg := config.EBPFTracer{HeuristicSQLDetect: true}
 	ctx := NewEBPFParseContext(&cfg, nil, nil)
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 	require.NoError(t, err)
 	require.False(t, ignore)
@@ -395,7 +395,7 @@ func TestReadTCPRequestIntoSpan_NATSResponseTrafficIsServerSpan(t *testing.T) {
 	ctx := NewEBPFParseContext(&cfg, nil, nil)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, r))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, r))
 	fltr := TestPidsFilter{services: map[app.PID]svc.Attrs{}}
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
@@ -418,7 +418,7 @@ func TestReadTCPRequestIntoSpan_NATSReceiveFirstMessageIsServerSpan(t *testing.T
 	ctx := NewEBPFParseContext(&cfg, nil, nil)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, r))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, r))
 	fltr := TestPidsFilter{services: map[app.PID]svc.Attrs{}}
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
@@ -454,7 +454,7 @@ func TestReadTCPRequestIntoSpan_NATSCoalescedPublishAndProcessEmitsDistinctServe
 	ctx := NewEBPFParseContext(&cfg, queue, &fltr)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, r))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, r))
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 	require.NoError(t, err)
@@ -502,7 +502,7 @@ func TestReadTCPRequestIntoSpan_NATSReversedCoalescedPublishAndProcessPreservesR
 	ctx := NewEBPFParseContext(&cfg, queue, &fltr)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, r))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, r))
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 	require.NoError(t, err)
@@ -543,7 +543,7 @@ func TestTCPReqMQTTHeuristicFailure(t *testing.T) {
 	ctx := NewEBPFParseContext(&cfg, nil, nil)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, r))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, r))
 	fltr := TestPidsFilter{services: map[app.PID]svc.Attrs{}}
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
@@ -620,7 +620,7 @@ func TestReadTCPRequestIntoSpan_CouchbaseKeyNotFound(t *testing.T) {
 	ctx := NewEBPFParseContext(&cfg, nil, nil)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 
 	fltr := TestPidsFilter{services: map[app.PID]svc.Attrs{}}
 
@@ -682,7 +682,7 @@ func TestReadTCPRequestIntoSpan_CouchbaseFlexibleFraming(t *testing.T) {
 	ctx := NewEBPFParseContext(&cfg, nil, nil)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 
 	fltr := TestPidsFilter{services: map[app.PID]svc.Attrs{}}
 
@@ -715,7 +715,7 @@ func TestReadTCPRequestIntoSpan_MemcachedCoalescedNoreplySetThenGet(t *testing.T
 	ctx := NewEBPFParseContext(&cfg, queue, &fltr)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 	require.NoError(t, err)
@@ -747,7 +747,7 @@ func TestReadTCPRequestIntoSpan_MemcachedCoalescedNoreplySetThenIncrError(t *tes
 	ctx := NewEBPFParseContext(&cfg, queue, &fltr)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 	require.NoError(t, err)
@@ -777,7 +777,7 @@ func TestReadTCPRequestIntoSpan_MemcachedRequestOnlyDeleteNoreply(t *testing.T) 
 	ctx := NewEBPFParseContext(&cfg, queue, &fltr)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 	require.NoError(t, err)
@@ -800,7 +800,7 @@ func TestReadTCPRequestIntoSpan_MemcachedRequestOnlyTouchNoreply(t *testing.T) {
 	ctx := NewEBPFParseContext(&cfg, queue, &fltr)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 	require.NoError(t, err)
@@ -823,7 +823,7 @@ func TestReadTCPRequestIntoSpan_MemcachedRequestOnlyWithoutNoreplyIgnored(t *tes
 	ctx := NewEBPFParseContext(&cfg, queue, &fltr)
 
 	binaryRecord := bytes.Buffer{}
-	require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+	require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 
 	span, ignore, err := ReadTCPRequestIntoSpan(ctx, &cfg, &ringbuf.Record{RawSample: binaryRecord.Bytes()}, &fltr)
 	require.NoError(t, err)
@@ -893,7 +893,7 @@ func TestReadTCPRequestIntoSpan_DNSNotMisclassifiedAsCouchbase(t *testing.T) {
 			ctx := NewEBPFParseContext(&cfg, nil, nil)
 
 			binaryRecord := bytes.Buffer{}
-			require.NoError(t, binary.Write(&binaryRecord, binary.LittleEndian, tri))
+			require.NoError(t, binary.Write(&binaryRecord, binary.NativeEndian, tri))
 
 			fltr := TestPidsFilter{services: map[app.PID]svc.Attrs{}}
 

@@ -298,7 +298,7 @@ func (f *fakeRingBufReader) ReadInto(record *ringbuf.Record) error {
 	select {
 	case traceEvent := <-f.events:
 		binaryRecord := bytes.Buffer{}
-		if err := binary.Write(&binaryRecord, binary.LittleEndian, traceEvent); err != nil {
+		if err := binary.Write(&binaryRecord, binary.NativeEndian, traceEvent); err != nil {
 			return err
 		}
 		record.RawSample = binaryRecord.Bytes()
