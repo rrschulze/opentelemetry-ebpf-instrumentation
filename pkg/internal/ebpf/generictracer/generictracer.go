@@ -35,7 +35,7 @@ import (
 	"go.opentelemetry.io/obi/pkg/pipe/msg"
 )
 
-//go:generate $BPF2GO -cc $BPF_CLANG -cflags $BPF_CFLAGS -target amd64,arm64 Bpf ../../../../bpf/generictracer/generictracer.c -- -I../../../../bpf
+//go:generate $BPF2GO -cc $BPF_CLANG -cflags $BPF_CFLAGS -target amd64,arm64,s390x Bpf ../../../../bpf/generictracer/generictracer.c -- -I../../../../bpf
 
 type Tracer struct {
 	pidsFilter       ebpfcommon.ServiceFilter

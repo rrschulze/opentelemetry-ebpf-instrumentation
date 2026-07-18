@@ -37,7 +37,7 @@ import (
 	"go.opentelemetry.io/obi/pkg/pipe/msg"
 )
 
-//go:generate $BPF2GO -cc $BPF_CLANG -cflags $BPF_CFLAGS -type log_event_t -target amd64,arm64 Bpf ../../../../bpf/logenricher/logenricher.c -- -I../../../../bpf -I../../../../bpf
+//go:generate $BPF2GO -cc $BPF_CLANG -cflags $BPF_CFLAGS -type log_event_t -target amd64,arm64,s390x Bpf ../../../../bpf/logenricher/logenricher.c -- -I../../../../bpf -I../../../../bpf
 
 type LogEvent struct {
 	orig    BpfLogEventT
