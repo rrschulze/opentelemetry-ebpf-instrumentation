@@ -173,7 +173,7 @@ int BPF_KPROBE(obi_kprobe_sys_connect) {
     // unwrap fd because of sys call
     int fd;
     struct pt_regs *__ctx = (struct pt_regs *)PT_REGS_PARM1(ctx);
-    bpf_probe_read(&fd, sizeof(int), (void *)&PT_REGS_PARM1(__ctx));
+    bpf_probe_read_user(&fd, sizeof(int), (void *)&PT_REGS_PARM1(__ctx));
 
     bpf_dbg_printk("=== kprobe/sys_connect id=%d, fd=%d ===", id, fd);
 

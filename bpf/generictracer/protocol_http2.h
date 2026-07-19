@@ -214,7 +214,11 @@ static __always_inline void http2_grpc_start(void *ctx,
 
     const u8 is_client = (meta->type == EVENT_HTTP_CLIENT);
     fixup_connection_info(&h2g_info->conn_info, is_client, orig_dport);
-    bpf_probe_read(h2g_info->data, k_kprobes_http2_buf_size, u_buf);
+#ifdef __TARGET_ARCH_s390
+    bpf_probe_read_kernel(h2g_info->data, k_kprobes_http2_buf_size, u_buf);
+#else
+    bpf_probe_read_user(h2g_info->data, k_kprobes_http2_buf_size, u_buf);
+#endif
 
     tp_info_pid_t *tp_p = tp_info_mem();
     if (!tp_p) {
@@ -288,7 +292,11 @@ http2_grpc_end(http2_conn_stream_t *stream, http2_grpc_request_t *prev_info, voi
 
         http2_grpc_request_t *trace = bpf_ringbuf_reserve(&events, sizeof(http2_grpc_request_t), 0);
         if (trace) {
-            bpf_probe_read(prev_info->ret_data, k_kprobes_http2_ret_buf_size, u_buf);
+#ifdef __TARGET_ARCH_s390
+            bpf_probe_read_kernel(prev_info->ret_data, k_kprobes_http2_ret_buf_size, u_buf);
+#else
+            bpf_probe_read_user(prev_info->ret_data, k_kprobes_http2_ret_buf_size, u_buf);
+#endif
             __builtin_memcpy(trace, prev_info, sizeof(http2_grpc_request_t));
             bpf_ringbuf_submit(trace, get_flags());
         }

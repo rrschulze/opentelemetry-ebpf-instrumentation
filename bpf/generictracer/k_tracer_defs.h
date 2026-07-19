@@ -66,7 +66,15 @@ static __always_inline call_protocol_args_t *make_protocol_args(const pid_connec
     __builtin_memset(args->small_buf, 0, sizeof(args->small_buf));
     u32 small_buf_len = (u32)bytes_len;
     bpf_clamp_umax(small_buf_len, sizeof(args->small_buf));
-    bpf_probe_read(args->small_buf, small_buf_len, (void *)args->u_buf);
+    // On s390x, u_buf is kernel BPF-map memory (from iovec_memory()) in kprobe context.
+    // bpf_probe_read is aliased to bpf_probe_read_kernel on s390x (see bpf_probe_read_compat.h),
+    // which correctly reads the already-copied kernel buffer. On other architectures this is the
+    // generic probe_read that handles both user and kernel addresses.
+#ifdef __TARGET_ARCH_s390
+    bpf_probe_read_kernel(args->small_buf, small_buf_len, (void *)args->u_buf);
+#else
+    bpf_probe_read_user(args->small_buf, small_buf_len, (void *)args->u_buf);
+#endif
 
     return args;
 }

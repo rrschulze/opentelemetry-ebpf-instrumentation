@@ -121,7 +121,11 @@ int obi_handle_buf_with_args(void *ctx) {
                 if (reading && is_traceparent(args->small_buf)) {
                     unsigned char *buf = (unsigned char *)tp_char_buf_mem();
                     if (buf) {
-                        bpf_probe_read(buf, TP_SIZE, (unsigned char *)args->u_buf);
+#ifdef __TARGET_ARCH_s390
+                        bpf_probe_read_kernel(buf, TP_SIZE, (unsigned char *)args->u_buf);
+#else
+                        bpf_probe_read_user(buf, TP_SIZE, (unsigned char *)args->u_buf);
+#endif
                         bpf_dbg_printk("Found traceparent buf=[%s]", buf);
                         unsigned char *t_id = extract_trace_id(buf);
                         unsigned char *s_id = extract_span_id(buf);

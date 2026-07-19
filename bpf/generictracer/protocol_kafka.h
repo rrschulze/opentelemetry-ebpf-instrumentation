@@ -309,7 +309,11 @@ static __always_inline s32 kafka_read_response_correlation_id(const kafka_state_
         if (bytes_len < k_kafka_hdr_correlation_id) {
             return -1;
         }
-        if (bpf_probe_read(&correlation_id, k_kafka_hdr_correlation_id, u_buf) != 0) {
+#ifdef __TARGET_ARCH_s390
+        if (bpf_probe_read_kernel(&correlation_id, k_kafka_hdr_correlation_id, u_buf) != 0) {
+#else
+        if (bpf_probe_read_user(&correlation_id, k_kafka_hdr_correlation_id, u_buf) != 0) {
+#endif
             return -1;
         }
     } else {
@@ -390,7 +394,11 @@ static __always_inline int kafka_send_large_buffer(tcp_req_t *req,
         if (msg_size_from_state) {
             message_size = state_data->message_size;
         } else if (bytes_len >= k_kafka_hdr_message_size) {
-            bpf_probe_read(&message_size, k_kafka_hdr_message_size, u_buf);
+#ifdef __TARGET_ARCH_s390
+            bpf_probe_read_kernel(&message_size, k_kafka_hdr_message_size, u_buf);
+#else
+            bpf_probe_read_user(&message_size, k_kafka_hdr_message_size, u_buf);
+#endif
             message_size = bpf_ntohl(message_size);
         }
         if (message_size > 0) {

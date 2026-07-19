@@ -402,9 +402,13 @@ static __always_inline int __obi_continue2_protocol_http(struct pt_regs *ctx,
         bpf_dbg_printk("No META!");
     }
 
-    // we copy some small part of the buffer to the info trace event, so that we can process an event even with
-    // incomplete trace info in user space.
-    bpf_probe_read(info->buf, FULL_BUF_SIZE, (void *)args->u_buf);
+// we copy some small part of the buffer to the info trace event, so that we can process an event even with
+// incomplete trace info in user space.
+#ifdef __TARGET_ARCH_s390
+    bpf_probe_read_kernel(info->buf, FULL_BUF_SIZE, (void *)args->u_buf);
+#else
+    bpf_probe_read_user(info->buf, FULL_BUF_SIZE, (void *)args->u_buf);
+#endif
     process_http_request(
         info, args->bytes_len, meta, args->direction, args->orig_dport, args->lw_thread);
 
@@ -481,7 +485,11 @@ __obi_continue_protocol_http_tp(struct pt_regs *ctx,
             u16 buf_len = args->bytes_len;
             bpf_clamp_umax(buf_len, TRACE_BUF_SIZE - 1);
 
-            bpf_probe_read(buf, buf_len, (void *)args->u_buf);
+#ifdef __TARGET_ARCH_s390
+            bpf_probe_read_kernel(buf, buf_len, (void *)args->u_buf);
+#else
+            bpf_probe_read_user(buf, buf_len, (void *)args->u_buf);
+#endif
             // null terminate to make proper string
             buf[buf_len] = '\0';
 

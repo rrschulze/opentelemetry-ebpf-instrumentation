@@ -342,7 +342,11 @@ static __always_inline void handle_unknown_tcp_connection(pid_connection_info_t 
             req->task_tid = req_task.tid;
             req->protocol_type = protocol_type;
             task_pid(&req->pid);
-            bpf_probe_read(req->buf, bytes_len, u_buf);
+#ifdef __TARGET_ARCH_s390
+            bpf_probe_read_kernel(req->buf, bytes_len, u_buf);
+#else
+            bpf_probe_read_user(req->buf, bytes_len, u_buf);
+#endif
 
             req->tp.ts = bpf_ktime_get_ns();
 
@@ -384,7 +388,11 @@ static __always_inline void handle_unknown_tcp_connection(pid_connection_info_t 
                                existing->resp_len);
 
                 __builtin_memcpy(trace, existing, sizeof(tcp_req_t));
-                bpf_probe_read(trace->rbuf, bytes_len, u_buf);
+#ifdef __TARGET_ARCH_s390
+                bpf_probe_read_kernel(trace->rbuf, bytes_len, u_buf);
+#else
+                bpf_probe_read_user(trace->rbuf, bytes_len, u_buf);
+#endif
 
                 bpf_ringbuf_submit(trace, get_flags());
             } else {
@@ -401,7 +409,11 @@ static __always_inline void handle_unknown_tcp_connection(pid_connection_info_t 
             // the next event has an RST frame prepended.
             u32 off = existing->len;
             bpf_clamp_umax(off, (k_tcp_max_len / 2));
-            bpf_probe_read(existing->buf + off, (k_tcp_max_len / 2), u_buf);
+#ifdef __TARGET_ARCH_s390
+            bpf_probe_read_kernel(existing->buf + off, (k_tcp_max_len / 2), u_buf);
+#else
+            bpf_probe_read_user(existing->buf + off, (k_tcp_max_len / 2), u_buf);
+#endif
         }
         existing->len += bytes_len;
         existing->req_len = existing->len;

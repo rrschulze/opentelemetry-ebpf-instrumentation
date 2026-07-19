@@ -86,7 +86,7 @@ static __always_inline int read_iovec_ctx(iovec_iter_ctx *ctx, unsigned char *bu
         // equality check rather than a bitwise and like we do for ITER_IOVEC
         if (ctx->ubuf != NULL && ctx->iter_type == iter_ubuf) {
             bpf_clamp_umax(max_len, k_iovec_max_len);
-            return bpf_probe_read(buf, max_len, ctx->ubuf) == 0 ? max_len : 0;
+            return bpf_probe_read_user(buf, max_len, ctx->ubuf) == 0 ? max_len : 0;
         }
     }
 
@@ -110,9 +110,6 @@ static __always_inline int read_iovec_ctx(iovec_iter_ctx *ctx, unsigned char *bu
             break;
         }
 
-        // bpf_dbg_printk("iov[%d]=%llx", i, &ctx->iov[i]);
-        // bpf_dbg_printk("base=%llx, len=%d", vec.iov_base, vec.iov_len);
-
         if (!vec.iov_base || !vec.iov_len) {
             continue;
         }
@@ -122,15 +119,11 @@ static __always_inline int read_iovec_ctx(iovec_iter_ctx *ctx, unsigned char *bu
         bpf_clamp_umax(tot_len, k_iovec_max_len);
         bpf_clamp_umax(iov_size, k_iovec_max_len);
 
-        // bpf_dbg_printk("tot_len=%d, remaining=%d", tot_len, remaining);
-
         if (tot_len + iov_size > max_len) {
             break;
         }
 
-        bpf_probe_read(&buf[tot_len], iov_size, vec.iov_base);
-
-        // bpf_dbg_printk("iov_size=%d, buf=[%s]", iov_size, buf);
+        bpf_probe_read_user(&buf[tot_len], iov_size, vec.iov_base);
 
         tot_len += iov_size;
     }
