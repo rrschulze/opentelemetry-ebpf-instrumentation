@@ -9,7 +9,24 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime"
+
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
+
+	attr "go.opentelemetry.io/obi/pkg/export/attributes/names"
 )
+
+// goarchToOTelArch maps Go GOARCH values to the OTel semconv host.arch strings.
+// Only the GOARCH values that OBI can realistically run on are listed;
+// unknown architectures are omitted so the attribute is simply absent.
+var goarchToOTelArch = map[string]string{
+	"amd64": string(semconv.HostArchAMD64.Value.Emit()),
+	"arm":   string(semconv.HostArchARM32.Value.Emit()),
+	"arm64": string(semconv.HostArchARM64.Value.Emit()),
+	"ppc64": string(semconv.HostArchPPC64.Value.Emit()),
+	"s390x": string(semconv.HostArchS390x.Value.Emit()),
+	"386":   string(semconv.HostArchX86.Value.Emit()),
+}
 
 func linuxLocalFetcher(_ context.Context) (NodeMeta, error) {
 	mid, err := fetchMachineID()
@@ -23,9 +40,14 @@ func linuxLocalFetcher(_ context.Context) (NodeMeta, error) {
 			"component", "meta.linuxLocalFetcher",
 			"error", err)
 	}
-	return NodeMeta{
-		HostID: mid,
-	}, nil
+	nm := NodeMeta{HostID: mid}
+	if archVal, ok := goarchToOTelArch[runtime.GOARCH]; ok {
+		nm.Metadata = append(nm.Metadata, Entry{
+			Key:   attr.Name(semconv.HostArchKey),
+			Value: archVal,
+		})
+	}
+	return nm, nil
 }
 
 func fetchMachineID() (string, error) {
