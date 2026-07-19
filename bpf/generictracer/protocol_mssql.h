@@ -115,7 +115,11 @@ static __always_inline u8 is_mssql(connection_info_t *conn_info,
 // Returns -1 to wait for more data, 0 when the response is complete.
 static __always_inline int mssql_response_eom(tcp_req_t *req, const void *u_buf, u32 bytes_len) {
     if (req->resp_len == 0 && bytes_len >= k_mssql_hdr_size) {
-        bpf_probe_read(req->rbuf, k_mssql_hdr_size, u_buf);
+#ifdef __TARGET_ARCH_s390
+        bpf_probe_read_kernel(req->rbuf, k_mssql_hdr_size, u_buf);
+#else
+        bpf_probe_read_user(req->rbuf, k_mssql_hdr_size, u_buf);
+#endif
     }
 
     req->resp_len += bytes_len;

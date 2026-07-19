@@ -286,4 +286,8 @@ enum libbpf_tristate {
 /* Helper macro to print out debug messages */
 #define bpf_printk(fmt, args...) ___bpf_pick_printk(args)(fmt, ##args)
 
+/* s390x: remap bpf_probe_read to bpf_probe_read_kernel for all kernel-memory
+ * read sites.  User-space read sites use bpf_probe_read_user explicitly. */
+#include "bpf_probe_read_compat.h"
+
 #endif

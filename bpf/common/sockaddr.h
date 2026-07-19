@@ -94,15 +94,15 @@ static __always_inline u16 get_sockaddr_port(struct sockaddr *addr) {
 static __always_inline u16 get_sockaddr_port_user(struct sockaddr *addr) {
     short unsigned int sa_family;
 
-    bpf_probe_read(&sa_family, sizeof(short unsigned int), &addr->sa_family);
+    bpf_probe_read_user(&sa_family, sizeof(short unsigned int), &addr->sa_family);
     u16 bport = 0;
 
     //bpf_dbg_printk("addr=%llx, sa_family=%d", addr, sa_family);
 
     if (sa_family == AF_INET) {
-        bpf_probe_read(&bport, sizeof(u16), &(((struct sockaddr_in *)addr)->sin_port));
+        bpf_probe_read_user(&bport, sizeof(u16), &(((struct sockaddr_in *)addr)->sin_port));
     } else if (sa_family == AF_INET6) {
-        bpf_probe_read(&bport, sizeof(u16), &(((struct sockaddr_in6 *)addr)->sin6_port));
+        bpf_probe_read_user(&bport, sizeof(u16), &(((struct sockaddr_in6 *)addr)->sin6_port));
     }
 
     bport = bpf_ntohs(bport);
@@ -114,20 +114,20 @@ static __always_inline bool
 parse_sockaddr_info(const u32 pid, struct sockaddr *addr, connection_info_part_t *info) {
     short unsigned int sa_family;
 
-    bpf_probe_read(&sa_family, sizeof(short unsigned int), &addr->sa_family);
+    bpf_probe_read_user(&sa_family, sizeof(short unsigned int), &addr->sa_family);
 
     // We always store the IP addresses in IPV6 format, simplifies the code and
     // it matches natively what our Golang userspace processing will require.
     if (sa_family == AF_INET) {
         u32 ip4_s_l;
-        bpf_probe_read(&info->port, sizeof(u16), &(((struct sockaddr_in *)addr)->sin_port));
-        bpf_probe_read(&ip4_s_l, sizeof(u32), &(((struct sockaddr_in *)addr)->sin_addr));
+        bpf_probe_read_user(&info->port, sizeof(u16), &(((struct sockaddr_in *)addr)->sin_port));
+        bpf_probe_read_user(&ip4_s_l, sizeof(u32), &(((struct sockaddr_in *)addr)->sin_addr));
 
         __builtin_memcpy(info->addr, ip4ip6_prefix, sizeof(ip4ip6_prefix));
         __builtin_memcpy(info->addr + sizeof(ip4ip6_prefix), &ip4_s_l, sizeof(ip4_s_l));
     } else if (sa_family == AF_INET6) {
-        bpf_probe_read(&info->port, sizeof(u16), &(((struct sockaddr_in6 *)addr)->sin6_port));
-        bpf_probe_read(
+        bpf_probe_read_user(&info->port, sizeof(u16), &(((struct sockaddr_in6 *)addr)->sin6_port));
+        bpf_probe_read_user(
             &info->addr, sizeof(struct in6_addr), &(((struct sockaddr_in6 *)addr)->sin6_addr));
     }
 

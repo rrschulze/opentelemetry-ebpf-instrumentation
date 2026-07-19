@@ -75,9 +75,9 @@ int BPF_KPROBE_GUARDED(obi_kprobe_sys_ioctl) {
     unsigned int cmd = 0;
     void *arg = 0;
 
-    bpf_probe_read(&fd, sizeof(unsigned int), (void *)&PT_REGS_PARM1(__ctx));
-    bpf_probe_read(&cmd, sizeof(unsigned int), (void *)&PT_REGS_PARM2(__ctx));
-    bpf_probe_read(&arg, sizeof(void *), (void *)&PT_REGS_PARM3(__ctx));
+    bpf_probe_read_user(&fd, sizeof(unsigned int), (void *)&PT_REGS_PARM1(__ctx));
+    bpf_probe_read_user(&cmd, sizeof(unsigned int), (void *)&PT_REGS_PARM2(__ctx));
+    bpf_probe_read_user(&arg, sizeof(void *), (void *)&PT_REGS_PARM3(__ctx));
 
     // it must be fd == 0 if we are considering this request
     if (fd) {
