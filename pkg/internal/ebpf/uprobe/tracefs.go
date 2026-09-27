@@ -43,7 +43,7 @@ var findTraceFS = sync.OnceValues(func() (string, error) {
 	// ready or cannot be consumed. we try the usual suspects for tracefs/debugfs.
 	for _, candidate := range []struct {
 		path   string
-		fsType int64
+		fsType uint32
 	}{
 		{path: "/sys/kernel/tracing", fsType: unix.TRACEFS_MAGIC},
 		{path: "/sys/kernel/debug/tracing", fsType: unix.TRACEFS_MAGIC},

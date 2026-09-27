@@ -44,3 +44,17 @@ func isBCRReturn(inst s390xasm.Inst) bool {
 	reg, ok2 := inst.Args[1].(s390xasm.Reg)
 	return ok1 && ok2 && mask == 15 && reg == s390xasm.R14
 }
+
+// FindCallTargets returns the offsets of call instructions within data,
+// relative to baseOffset. On s390x the Go compiler does not use the
+// compiler-padding pattern that x86/arm64 exploit, so this returns nil.
+func FindCallTargets(baseOffset uint64, data []byte) ([]uint64, error) {
+	return nil, nil
+}
+
+// FindPadStartOffset locates the compiler-inserted padding (NOP sled) that
+// precedes some Go function prologues on x86/arm64. s390x does not use this
+// pattern, so this always returns zero values.
+func FindPadStartOffset(baseOffset uint64, data []byte) (uint64, uint64, error) {
+	return 0, 0, nil
+}
