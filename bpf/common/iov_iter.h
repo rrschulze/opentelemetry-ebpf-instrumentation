@@ -126,6 +126,7 @@ static __always_inline int read_iovec_ctx(iovec_iter_ctx *ctx, unsigned char *bu
             break;
         }
 
+        bpf_clamp_umax(tot_len, k_iovec_max_len); // s390x: re-clamp before use as map offset
         bpf_probe_read_user(&buf[tot_len], iov_size, vec.iov_base);
         tot_len += iov_size;
     }
