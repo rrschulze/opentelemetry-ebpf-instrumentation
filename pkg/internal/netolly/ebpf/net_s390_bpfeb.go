@@ -93,25 +93,28 @@ type NetPacketCountT struct {
 //
 // Used for safe lookups in a Collection or CollectionSpec.
 const (
-	NetMapAggregatedFlows         = "aggregated_flows"
-	NetMapConnInitiators          = "conn_initiators"
-	NetMapDebugEvents             = "debug_events"
-	NetMapDirectFlows             = "direct_flows"
-	NetMapFlowDirections          = "flow_directions"
-	NetMapFlowPacketStats         = "flow_packet_stats"
-	NetProgObiEgressFlowParse     = "obi_egress_flow_parse"
-	NetProgObiIngressFlowParse    = "obi_ingress_flow_parse"
-	NetVarG_bpfDebug              = "g_bpf_debug"
-	NetVarG_bpfHeaderPropagation  = "g_bpf_header_propagation"
-	NetVarG_bpfLoopEnabled        = "g_bpf_loop_enabled"
-	NetVarG_bpfTraceparentEnabled = "g_bpf_traceparent_enabled"
-	NetVarIp4in6                  = "ip4in6"
-	NetVarPortGuessing            = "port_guessing"
-	NetVarSampling                = "sampling"
-	NetVarTraceMessages           = "trace_messages"
-	NetVarUnusedFlowId            = "unused_flow_id"
-	NetVarUnusedFlowMetrics       = "unused_flow_metrics"
-	NetVarUnusedFlowRecord        = "unused_flow_record"
+	NetMapAggregatedFlows            = "aggregated_flows"
+	NetMapConnInitiators             = "conn_initiators"
+	NetMapDebugEvents                = "debug_events"
+	NetMapDirectFlows                = "direct_flows"
+	NetMapFlowDirections             = "flow_directions"
+	NetMapFlowPacketStats            = "flow_packet_stats"
+	NetProgObiEgressFlowParse        = "obi_egress_flow_parse"
+	NetProgObiIngressFlowParse       = "obi_ingress_flow_parse"
+	NetVarG_bpfDebug                 = "g_bpf_debug"
+	NetVarG_bpfHeaderPropagation     = "g_bpf_header_propagation"
+	NetVarG_bpfLoopEnabled           = "g_bpf_loop_enabled"
+	NetVarG_bpfProbeWriteUserEnabled = "g_bpf_probe_write_user_enabled"
+	NetVarG_bpfTraceparentEnabled    = "g_bpf_traceparent_enabled"
+	NetVarG_goH2WriteFailStep        = "g_go_h2_write_fail_step"
+	NetVarG_tracesCtxV1Enabled       = "g_traces_ctx_v1_enabled"
+	NetVarIp4in6                     = "ip4in6"
+	NetVarPortGuessing               = "port_guessing"
+	NetVarSampling                   = "sampling"
+	NetVarTraceMessages              = "trace_messages"
+	NetVarUnusedFlowId               = "unused_flow_id"
+	NetVarUnusedFlowMetrics          = "unused_flow_metrics"
+	NetVarUnusedFlowRecord           = "unused_flow_record"
 )
 
 // LoadNet returns the embedded CollectionSpec for Net.
@@ -176,17 +179,20 @@ type NetMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type NetVariableSpecs struct {
-	G_bpfDebug              *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
-	Ip4in6                  *ebpf.VariableSpec `ebpf:"ip4in6"`
-	PortGuessing            *ebpf.VariableSpec `ebpf:"port_guessing"`
-	Sampling                *ebpf.VariableSpec `ebpf:"sampling"`
-	TraceMessages           *ebpf.VariableSpec `ebpf:"trace_messages"`
-	UnusedFlowId            *ebpf.VariableSpec `ebpf:"unused_flow_id"`
-	UnusedFlowMetrics       *ebpf.VariableSpec `ebpf:"unused_flow_metrics"`
-	UnusedFlowRecord        *ebpf.VariableSpec `ebpf:"unused_flow_record"`
+	G_bpfDebug                 *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.VariableSpec `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.VariableSpec `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.VariableSpec `ebpf:"g_traces_ctx_v1_enabled"`
+	Ip4in6                     *ebpf.VariableSpec `ebpf:"ip4in6"`
+	PortGuessing               *ebpf.VariableSpec `ebpf:"port_guessing"`
+	Sampling                   *ebpf.VariableSpec `ebpf:"sampling"`
+	TraceMessages              *ebpf.VariableSpec `ebpf:"trace_messages"`
+	UnusedFlowId               *ebpf.VariableSpec `ebpf:"unused_flow_id"`
+	UnusedFlowMetrics          *ebpf.VariableSpec `ebpf:"unused_flow_metrics"`
+	UnusedFlowRecord           *ebpf.VariableSpec `ebpf:"unused_flow_record"`
 }
 
 // NetObjects contains all objects after they have been loaded into the kernel.
@@ -232,17 +238,20 @@ func (m *NetMaps) Close() error {
 //
 // It can be passed to LoadNetObjects or ebpf.CollectionSpec.LoadAndAssign.
 type NetVariables struct {
-	G_bpfDebug              *ebpf.Variable `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
-	Ip4in6                  *ebpf.Variable `ebpf:"ip4in6"`
-	PortGuessing            *ebpf.Variable `ebpf:"port_guessing"`
-	Sampling                *ebpf.Variable `ebpf:"sampling"`
-	TraceMessages           *ebpf.Variable `ebpf:"trace_messages"`
-	UnusedFlowId            *ebpf.Variable `ebpf:"unused_flow_id"`
-	UnusedFlowMetrics       *ebpf.Variable `ebpf:"unused_flow_metrics"`
-	UnusedFlowRecord        *ebpf.Variable `ebpf:"unused_flow_record"`
+	G_bpfDebug                 *ebpf.Variable `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.Variable `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.Variable `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.Variable `ebpf:"g_traces_ctx_v1_enabled"`
+	Ip4in6                     *ebpf.Variable `ebpf:"ip4in6"`
+	PortGuessing               *ebpf.Variable `ebpf:"port_guessing"`
+	Sampling                   *ebpf.Variable `ebpf:"sampling"`
+	TraceMessages              *ebpf.Variable `ebpf:"trace_messages"`
+	UnusedFlowId               *ebpf.Variable `ebpf:"unused_flow_id"`
+	UnusedFlowMetrics          *ebpf.Variable `ebpf:"unused_flow_metrics"`
+	UnusedFlowRecord           *ebpf.Variable `ebpf:"unused_flow_record"`
 }
 
 // NetPrograms contains all programs after they have been loaded into the kernel.

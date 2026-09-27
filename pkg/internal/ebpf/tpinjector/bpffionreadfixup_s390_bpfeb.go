@@ -16,15 +16,18 @@ import (
 //
 // Used for safe lookups in a Collection or CollectionSpec.
 const (
-	BpfFionreadFixupMapDebugEvents             = "debug_events"
-	BpfFionreadFixupMapFionreadInflight        = "fionread_inflight"
-	BpfFionreadFixupMapTrackedSockCookies      = "tracked_sock_cookies"
-	BpfFionreadFixupProgObiFionreadFixupEnter  = "obi_fionread_fixup_enter"
-	BpfFionreadFixupProgObiFionreadFixupExit   = "obi_fionread_fixup_exit"
-	BpfFionreadFixupVarG_bpfDebug              = "g_bpf_debug"
-	BpfFionreadFixupVarG_bpfHeaderPropagation  = "g_bpf_header_propagation"
-	BpfFionreadFixupVarG_bpfLoopEnabled        = "g_bpf_loop_enabled"
-	BpfFionreadFixupVarG_bpfTraceparentEnabled = "g_bpf_traceparent_enabled"
+	BpfFionreadFixupMapDebugEvents                = "debug_events"
+	BpfFionreadFixupMapFionreadInflight           = "fionread_inflight"
+	BpfFionreadFixupMapTrackedSockCookies         = "tracked_sock_cookies"
+	BpfFionreadFixupProgObiFionreadFixupEnter     = "obi_fionread_fixup_enter"
+	BpfFionreadFixupProgObiFionreadFixupExit      = "obi_fionread_fixup_exit"
+	BpfFionreadFixupVarG_bpfDebug                 = "g_bpf_debug"
+	BpfFionreadFixupVarG_bpfHeaderPropagation     = "g_bpf_header_propagation"
+	BpfFionreadFixupVarG_bpfLoopEnabled           = "g_bpf_loop_enabled"
+	BpfFionreadFixupVarG_bpfProbeWriteUserEnabled = "g_bpf_probe_write_user_enabled"
+	BpfFionreadFixupVarG_bpfTraceparentEnabled    = "g_bpf_traceparent_enabled"
+	BpfFionreadFixupVarG_goH2WriteFailStep        = "g_go_h2_write_fail_step"
+	BpfFionreadFixupVarG_tracesCtxV1Enabled       = "g_traces_ctx_v1_enabled"
 )
 
 // LoadBpfFionreadFixup returns the embedded CollectionSpec for BpfFionreadFixup.
@@ -86,10 +89,13 @@ type BpfFionreadFixupMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfFionreadFixupVariableSpecs struct {
-	G_bpfDebug              *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
+	G_bpfDebug                 *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.VariableSpec `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.VariableSpec `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.VariableSpec `ebpf:"g_traces_ctx_v1_enabled"`
 }
 
 // BpfFionreadFixupObjects contains all objects after they have been loaded into the kernel.
@@ -129,10 +135,13 @@ func (m *BpfFionreadFixupMaps) Close() error {
 //
 // It can be passed to LoadBpfFionreadFixupObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfFionreadFixupVariables struct {
-	G_bpfDebug              *ebpf.Variable `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
+	G_bpfDebug                 *ebpf.Variable `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.Variable `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.Variable `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.Variable `ebpf:"g_traces_ctx_v1_enabled"`
 }
 
 // BpfFionreadFixupPrograms contains all programs after they have been loaded into the kernel.

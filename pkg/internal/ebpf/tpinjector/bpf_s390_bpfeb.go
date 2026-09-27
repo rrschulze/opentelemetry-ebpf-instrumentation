@@ -67,10 +67,31 @@ type BpfGoAddrKeyT struct {
 	Addr uint64
 }
 
+type BpfGoExecutableKeyT struct {
+	_   structs.HostLayout
+	Dev uint64
+	Ino uint64
+}
+
+type BpfGoH2OwnedStreamKeyT struct {
+	_              structs.HostLayout
+	P_conn         BpfPidConnectionInfoT
+	ProcessStartLo uint32
+	ProcessStartHi uint32
+	StreamId       uint32
+}
+
 type BpfGoroutineMetadata struct {
 	_         structs.HostLayout
 	Parent    BpfGoAddrKeyT
 	Timestamp uint64
+}
+
+type BpfGrpcH2OwnedStreamKeyT struct {
+	_            structs.HostLayout
+	SocketCookie uint64
+	Pid          uint32
+	StreamId     uint32
 }
 
 type BpfGrpcTransportsT struct {
@@ -82,42 +103,46 @@ type BpfGrpcTransportsT struct {
 }
 
 type BpfHttp2ConnInfoDataT struct {
-	_     structs.HostLayout
-	Id    uint64
-	Flags uint8
-	Pad   [7]uint8
+	_                 structs.HostLayout
+	Id                uint64
+	Flags             uint8
+	ReqHpackPoisoned  uint8
+	RespHpackPoisoned uint8
+	Pad               [5]uint8
 }
 
 type BpfHttpInfoT struct {
-	_               structs.HostLayout
-	Flags           uint8
-	Type            uint8
-	Ssl             uint8
-	Delayed         uint8
-	ConnInfo        BpfConnectionInfoT
-	StartMonotimeNs uint64
-	EndMonotimeNs   uint64
-	ReqMonotimeNs   uint64
-	ExtraId         uint64
-	Tp              BpfTpInfoT
-	Pid             struct {
+	_                      structs.HostLayout
+	Flags                  uint8
+	Type                   uint8
+	Ssl                    uint8
+	Delayed                uint8
+	ConnInfo               BpfConnectionInfoT
+	StartMonotimeNs        uint64
+	EndMonotimeNs          uint64
+	ReqMonotimeNs          uint64
+	ExtraId                uint64
+	ResponseBytesAtRequest uint64
+	Tp                     BpfTpInfoT
+	Pid                    struct {
 		_       structs.HostLayout
 		HostPid uint32
 		UserPid uint32
 		Ns      uint32
 	}
-	Len             uint32
-	RespLen         uint32
-	TaskTid         uint32
-	LbReqBytes      uint32
-	LbResBytes      uint32
-	Status          uint16
-	Buf             [256]uint8
-	HasLargeBuffers uint8
-	Direction       uint8
-	Submitted       uint8
-	EventSource     uint8
-	Pad             [2]uint8
+	Len                 uint32
+	RespLen             uint32
+	TaskTid             uint32
+	LbReqBytes          uint32
+	LbResBytes          uint32
+	Status              uint16
+	Buf                 [256]uint8
+	HasLargeBuffers     uint8
+	Direction           uint8
+	Submitted           uint8
+	ParentStatus        uint8
+	EventSource         uint8
+	ResponseObservation uint8
 }
 
 type BpfMsgBufferT struct {
@@ -130,7 +155,7 @@ type BpfMsgBufferT struct {
 
 type BpfOffTableT struct {
 	_     structs.HostLayout
-	Table [98]uint64
+	Table [136]uint64
 }
 
 type BpfPidConnectionInfoT struct {
@@ -153,24 +178,39 @@ type BpfPumaTaskIdT struct {
 	Pad1 uint32
 }
 
+type BpfPythonAddrKeyT struct {
+	_    structs.HostLayout
+	Pid  uint64
+	Addr uint64
+}
+
 type BpfPythonContextTaskT struct {
-	_       structs.HostLayout
-	Task    uint64
-	Version uint64
+	_    structs.HostLayout
+	Task struct {
+		_          structs.HostLayout
+		Addr       uint64
+		Generation uint64
+	}
+	Vars uint64
 }
 
 type BpfPythonTaskStateT struct {
-	_       structs.HostLayout
-	Parent  uint64
-	Version uint64
-	Conn    BpfConnectionInfoPartT
+	_      structs.HostLayout
+	Parent struct {
+		_          structs.HostLayout
+		Addr       uint64
+		Generation uint64
+	}
+	Generation uint64
+	Conn       BpfConnectionInfoPartT
 }
 
 type BpfPythonThreadStateT struct {
-	_              structs.HostLayout
-	CurrentTask    uint64
-	CurrentContext uint64
-	InflightTask   uint64
+	_               structs.HostLayout
+	CurrentTask     uint64
+	CurrentContext  uint64
+	InflightTask    uint64
+	StartMonotimeNs uint64
 }
 
 type BpfSqlFuncInvocationT struct {
@@ -192,7 +232,8 @@ type BpfTcpReqT struct {
 	HasLargeBuffers uint8
 	ProtocolType    uint8
 	IsServer        bool
-	Pad1            [2]uint8
+	ParentStatus    uint8
+	Pad1            [1]uint8
 	ConnInfo        BpfConnectionInfoT
 	Len             uint32
 	StartMonotimeNs uint64
@@ -218,13 +259,13 @@ type BpfTcpReqT struct {
 }
 
 type BpfTpInfoPidT struct {
-	_       structs.HostLayout
-	Tp      BpfTpInfoT
-	Pid     uint32
-	Valid   uint8
-	Written uint8
-	ReqType uint8
-	Pad     [1]uint8
+	_            structs.HostLayout
+	Tp           BpfTpInfoT
+	Pid          uint32
+	Valid        uint8
+	Written      uint8
+	ReqType      uint8
+	ResponseSent uint8
 }
 
 type BpfTpInfoT struct {
@@ -254,81 +295,93 @@ type BpfTraceMapKeyT struct {
 //
 // Used for safe lookups in a Collection or CollectionSpec.
 const (
-	BpfMapActiveSslConnections               = "active_ssl_connections"
-	BpfMapActiveUnixSocks                    = "active_unix_socks"
-	BpfMapCloneMap                           = "clone_map"
-	BpfMapCpSupportConnectInfo               = "cp_support_connect_info"
-	BpfMapDebugEvents                        = "debug_events"
-	BpfMapExtenderJumpTable                  = "extender_jump_table"
-	BpfMapFdMap                              = "fd_map"
-	BpfMapFdToConnection                     = "fd_to_connection"
-	BpfMapGoGrpcClientConns                  = "go_grpc_client_conns"
-	BpfMapGoOffsetsMap                       = "go_offsets_map"
-	BpfMapGoTraceMap                         = "go_trace_map"
-	BpfMapHandledByGoConn                    = "handled_by_go_conn"
-	BpfMapIncomingTraceMap                   = "incoming_trace_map"
-	BpfMapJavaTasks                          = "java_tasks"
-	BpfMapJavaVtThreads                      = "java_vt_threads"
-	BpfMapMsgBufferMem                       = "msg_buffer_mem"
-	BpfMapMsgBuffers                         = "msg_buffers"
-	BpfMapNginxUpstream                      = "nginx_upstream"
-	BpfMapNodejsFdMap                        = "nodejs_fd_map"
-	BpfMapOngoingClientConnections           = "ongoing_client_connections"
-	BpfMapOngoingGoroutines                  = "ongoing_goroutines"
-	BpfMapOngoingGrpcOperateHeaders          = "ongoing_grpc_operate_headers"
-	BpfMapOngoingGrpcTransports              = "ongoing_grpc_transports"
-	BpfMapOngoingHttp                        = "ongoing_http"
-	BpfMapOngoingHttp2Connections            = "ongoing_http2_connections"
-	BpfMapOngoingServerConnections           = "ongoing_server_connections"
-	BpfMapOngoingSqlQueries                  = "ongoing_sql_queries"
-	BpfMapOngoingTcpReq                      = "ongoing_tcp_req"
-	BpfMapOutgoingTraceMap                   = "outgoing_trace_map"
-	BpfMapPidCache                           = "pid_cache"
-	BpfMapPumaTaskConnections                = "puma_task_connections"
-	BpfMapPumaWorkerTasks                    = "puma_worker_tasks"
-	BpfMapPythonContextTask                  = "python_context_task"
-	BpfMapPythonTaskState                    = "python_task_state"
-	BpfMapPythonThreadState                  = "python_thread_state"
-	BpfMapServerTraces                       = "server_traces"
-	BpfMapServerTracesAux                    = "server_traces_aux"
-	BpfMapSkH2ConnFlag                       = "sk_h2_conn_flag"
-	BpfMapSkTpInfoPidMap                     = "sk_tp_info_pid_map"
-	BpfMapSockDir                            = "sock_dir"
-	BpfMapTailcallCtxStorage                 = "tailcall_ctx_storage"
-	BpfMapTpInfoBackupStorage                = "tp_info_backup_storage"
-	BpfMapTpInfoStorage                      = "tp_info_storage"
-	BpfMapTpStrBufStorage                    = "tp_str_buf_storage"
-	BpfMapTraceMap                           = "trace_map"
-	BpfMapTrackedSockCookies                 = "tracked_sock_cookies"
-	BpfMapValidPids                          = "valid_pids"
-	BpfProgObiPacketExtender                 = "obi_packet_extender"
-	BpfProgObiPacketExtenderCreateH2Tp       = "obi_packet_extender_create_h2_tp"
-	BpfProgObiPacketExtenderCreateTp         = "obi_packet_extender_create_tp"
-	BpfProgObiPacketExtenderDetectH2         = "obi_packet_extender_detect_h2"
-	BpfProgObiPacketExtenderFindExistingH2Tp = "obi_packet_extender_find_existing_h2_tp"
-	BpfProgObiPacketExtenderFindExistingTp   = "obi_packet_extender_find_existing_tp"
-	BpfProgObiPacketExtenderValidateH2Tp     = "obi_packet_extender_validate_h2_tp"
-	BpfProgObiPacketExtenderWriteH2Tp        = "obi_packet_extender_write_h2_tp"
-	BpfProgObiPacketExtenderWriteMsgTp       = "obi_packet_extender_write_msg_tp"
-	BpfProgObiSockmapTracker                 = "obi_sockmap_tracker"
-	BpfVarINVALID_POS                        = "INVALID_POS"
-	BpfVarTP                                 = "TP"
-	BpfVarTP_PREFIX                          = "TP_PREFIX"
-	BpfVarTP_PREFIX_SIZE                     = "TP_PREFIX_SIZE"
-	BpfVarTP_SIZE                            = "TP_SIZE"
-	BpfVarTP_TID_PREFIX                      = "TP_TID_PREFIX"
-	BpfVarTP_TID_PREFIX_SIZE                 = "TP_TID_PREFIX_SIZE"
-	BpfVarDisableBlackBoxCp                  = "disable_black_box_cp"
-	BpfVarFilterPids                         = "filter_pids"
-	BpfVarG_bpfDebug                         = "g_bpf_debug"
-	BpfVarG_bpfHeaderPropagation             = "g_bpf_header_propagation"
-	BpfVarG_bpfLoopEnabled                   = "g_bpf_loop_enabled"
-	BpfVarG_bpfTraceparentEnabled            = "g_bpf_traceparent_enabled"
-	BpfVarInjectFlags                        = "inject_flags"
-	BpfVarIp4ip6Prefix                       = "ip4ip6_prefix"
-	BpfVarMaxTransactionTime                 = "max_transaction_time"
-	BpfVarUnused                             = "unused"
-	BpfVarUnusedHttp2                        = "unused_http2"
+	BpfMapActiveSslConnections                  = "active_ssl_connections"
+	BpfMapActiveUnixSocks                       = "active_unix_socks"
+	BpfMapCloneMap                              = "clone_map"
+	BpfMapCpSupportConnectInfo                  = "cp_support_connect_info"
+	BpfMapDebugEvents                           = "debug_events"
+	BpfMapExtenderJumpTable                     = "extender_jump_table"
+	BpfMapFdMap                                 = "fd_map"
+	BpfMapFdToConnection                        = "fd_to_connection"
+	BpfMapGoGrpcClientConns                     = "go_grpc_client_conns"
+	BpfMapGoH2OwnedStreams                      = "go_h2_owned_streams"
+	BpfMapGoOffsetsMap                          = "go_offsets_map"
+	BpfMapGoTraceMap                            = "go_trace_map"
+	BpfMapGrpcH2OwnedStreams                    = "grpc_h2_owned_streams"
+	BpfMapH2WriteExpectedStorage                = "h2_write_expected_storage"
+	BpfMapHandledByGoConn                       = "handled_by_go_conn"
+	BpfMapIncomingTraceMap                      = "incoming_trace_map"
+	BpfMapJavaTasks                             = "java_tasks"
+	BpfMapJavaVtThreads                         = "java_vt_threads"
+	BpfMapMsgBufferMem                          = "msg_buffer_mem"
+	BpfMapMsgBuffers                            = "msg_buffers"
+	BpfMapNginxUpstream                         = "nginx_upstream"
+	BpfMapNodejsFdMap                           = "nodejs_fd_map"
+	BpfMapOngoingClientConnections              = "ongoing_client_connections"
+	BpfMapOngoingGoroutines                     = "ongoing_goroutines"
+	BpfMapOngoingGrpcOperateHeaders             = "ongoing_grpc_operate_headers"
+	BpfMapOngoingGrpcTransports                 = "ongoing_grpc_transports"
+	BpfMapOngoingHttp                           = "ongoing_http"
+	BpfMapOngoingHttp2Connections               = "ongoing_http2_connections"
+	BpfMapOngoingServerConnections              = "ongoing_server_connections"
+	BpfMapOngoingSqlQueries                     = "ongoing_sql_queries"
+	BpfMapOngoingTcpReq                         = "ongoing_tcp_req"
+	BpfMapOutgoingTraceMap                      = "outgoing_trace_map"
+	BpfMapPidCache                              = "pid_cache"
+	BpfMapPumaTaskConnections                   = "puma_task_connections"
+	BpfMapPumaWorkerTasks                       = "puma_worker_tasks"
+	BpfMapPythonContextTask                     = "python_context_task"
+	BpfMapPythonTaskGeneration                  = "python_task_generation"
+	BpfMapPythonTaskState                       = "python_task_state"
+	BpfMapPythonThreadState                     = "python_thread_state"
+	BpfMapServerTraces                          = "server_traces"
+	BpfMapServerTracesAux                       = "server_traces_aux"
+	BpfMapSkH2ConnFlag                          = "sk_h2_conn_flag"
+	BpfMapSkH2Flags                             = "sk_h2_flags"
+	BpfMapSkTpInfoPidMap                        = "sk_tp_info_pid_map"
+	BpfMapSockDir                               = "sock_dir"
+	BpfMapSocketCookie                          = "socket_cookie"
+	BpfMapTailcallCtxStorage                    = "tailcall_ctx_storage"
+	BpfMapTpInfoBackupStorage                   = "tp_info_backup_storage"
+	BpfMapTpInfoStorage                         = "tp_info_storage"
+	BpfMapTpStrBufStorage                       = "tp_str_buf_storage"
+	BpfMapTraceMap                              = "trace_map"
+	BpfMapTrackedSockCookies                    = "tracked_sock_cookies"
+	BpfMapValidPids                             = "valid_pids"
+	BpfProgObiPacketExtender                    = "obi_packet_extender"
+	BpfProgObiPacketExtenderCreateH2Tp          = "obi_packet_extender_create_h2_tp"
+	BpfProgObiPacketExtenderCreateTp            = "obi_packet_extender_create_tp"
+	BpfProgObiPacketExtenderDetectH2            = "obi_packet_extender_detect_h2"
+	BpfProgObiPacketExtenderFindExistingH2Tp    = "obi_packet_extender_find_existing_h2_tp"
+	BpfProgObiPacketExtenderFindExistingTp      = "obi_packet_extender_find_existing_tp"
+	BpfProgObiPacketExtenderSniffH2             = "obi_packet_extender_sniff_h2"
+	BpfProgObiPacketExtenderValidateH2Tp        = "obi_packet_extender_validate_h2_tp"
+	BpfProgObiPacketExtenderWriteH2Tp           = "obi_packet_extender_write_h2_tp"
+	BpfProgObiPacketExtenderWriteH2TpNoRollback = "obi_packet_extender_write_h2_tp_no_rollback"
+	BpfProgObiPacketExtenderWriteMsgTp          = "obi_packet_extender_write_msg_tp"
+	BpfProgObiSockmapTracker                    = "obi_sockmap_tracker"
+	BpfVarINVALID_POS                           = "INVALID_POS"
+	BpfVarTP                                    = "TP"
+	BpfVarTP_PREFIX                             = "TP_PREFIX"
+	BpfVarTP_PREFIX_SIZE                        = "TP_PREFIX_SIZE"
+	BpfVarTP_SIZE                               = "TP_SIZE"
+	BpfVarTP_TID_PREFIX                         = "TP_TID_PREFIX"
+	BpfVarTP_TID_PREFIX_SIZE                    = "TP_TID_PREFIX_SIZE"
+	BpfVarDisableBlackBoxCp                     = "disable_black_box_cp"
+	BpfVarFilterPids                            = "filter_pids"
+	BpfVarG_bpfDebug                            = "g_bpf_debug"
+	BpfVarG_bpfHeaderPropagation                = "g_bpf_header_propagation"
+	BpfVarG_bpfLoopEnabled                      = "g_bpf_loop_enabled"
+	BpfVarG_bpfProbeWriteUserEnabled            = "g_bpf_probe_write_user_enabled"
+	BpfVarG_bpfTraceparentEnabled               = "g_bpf_traceparent_enabled"
+	BpfVarG_goH2WriteFailStep                   = "g_go_h2_write_fail_step"
+	BpfVarG_tracesCtxV1Enabled                  = "g_traces_ctx_v1_enabled"
+	BpfVarHighRequestVolume                     = "high_request_volume"
+	BpfVarInjectFlags                           = "inject_flags"
+	BpfVarIp4ip6Prefix                          = "ip4ip6_prefix"
+	BpfVarMaxTransactionTime                    = "max_transaction_time"
+	BpfVarUnused                                = "unused"
+	BpfVarUnusedHttp2                           = "unused_http2"
 )
 
 // LoadBpf returns the embedded CollectionSpec for Bpf.
@@ -373,16 +426,18 @@ type BpfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfProgramSpecs struct {
-	ObiPacketExtender                 *ebpf.ProgramSpec `ebpf:"obi_packet_extender"`
-	ObiPacketExtenderCreateH2Tp       *ebpf.ProgramSpec `ebpf:"obi_packet_extender_create_h2_tp"`
-	ObiPacketExtenderCreateTp         *ebpf.ProgramSpec `ebpf:"obi_packet_extender_create_tp"`
-	ObiPacketExtenderDetectH2         *ebpf.ProgramSpec `ebpf:"obi_packet_extender_detect_h2"`
-	ObiPacketExtenderFindExistingH2Tp *ebpf.ProgramSpec `ebpf:"obi_packet_extender_find_existing_h2_tp"`
-	ObiPacketExtenderFindExistingTp   *ebpf.ProgramSpec `ebpf:"obi_packet_extender_find_existing_tp"`
-	ObiPacketExtenderValidateH2Tp     *ebpf.ProgramSpec `ebpf:"obi_packet_extender_validate_h2_tp"`
-	ObiPacketExtenderWriteH2Tp        *ebpf.ProgramSpec `ebpf:"obi_packet_extender_write_h2_tp"`
-	ObiPacketExtenderWriteMsgTp       *ebpf.ProgramSpec `ebpf:"obi_packet_extender_write_msg_tp"`
-	ObiSockmapTracker                 *ebpf.ProgramSpec `ebpf:"obi_sockmap_tracker"`
+	ObiPacketExtender                    *ebpf.ProgramSpec `ebpf:"obi_packet_extender"`
+	ObiPacketExtenderCreateH2Tp          *ebpf.ProgramSpec `ebpf:"obi_packet_extender_create_h2_tp"`
+	ObiPacketExtenderCreateTp            *ebpf.ProgramSpec `ebpf:"obi_packet_extender_create_tp"`
+	ObiPacketExtenderDetectH2            *ebpf.ProgramSpec `ebpf:"obi_packet_extender_detect_h2"`
+	ObiPacketExtenderFindExistingH2Tp    *ebpf.ProgramSpec `ebpf:"obi_packet_extender_find_existing_h2_tp"`
+	ObiPacketExtenderFindExistingTp      *ebpf.ProgramSpec `ebpf:"obi_packet_extender_find_existing_tp"`
+	ObiPacketExtenderSniffH2             *ebpf.ProgramSpec `ebpf:"obi_packet_extender_sniff_h2"`
+	ObiPacketExtenderValidateH2Tp        *ebpf.ProgramSpec `ebpf:"obi_packet_extender_validate_h2_tp"`
+	ObiPacketExtenderWriteH2Tp           *ebpf.ProgramSpec `ebpf:"obi_packet_extender_write_h2_tp"`
+	ObiPacketExtenderWriteH2TpNoRollback *ebpf.ProgramSpec `ebpf:"obi_packet_extender_write_h2_tp_no_rollback"`
+	ObiPacketExtenderWriteMsgTp          *ebpf.ProgramSpec `ebpf:"obi_packet_extender_write_msg_tp"`
+	ObiSockmapTracker                    *ebpf.ProgramSpec `ebpf:"obi_sockmap_tracker"`
 }
 
 // BpfMapSpecs contains maps before they are loaded into the kernel.
@@ -398,8 +453,11 @@ type BpfMapSpecs struct {
 	FdMap                     *ebpf.MapSpec `ebpf:"fd_map"`
 	FdToConnection            *ebpf.MapSpec `ebpf:"fd_to_connection"`
 	GoGrpcClientConns         *ebpf.MapSpec `ebpf:"go_grpc_client_conns"`
+	GoH2OwnedStreams          *ebpf.MapSpec `ebpf:"go_h2_owned_streams"`
 	GoOffsetsMap              *ebpf.MapSpec `ebpf:"go_offsets_map"`
 	GoTraceMap                *ebpf.MapSpec `ebpf:"go_trace_map"`
+	GrpcH2OwnedStreams        *ebpf.MapSpec `ebpf:"grpc_h2_owned_streams"`
+	H2WriteExpectedStorage    *ebpf.MapSpec `ebpf:"h2_write_expected_storage"`
 	HandledByGoConn           *ebpf.MapSpec `ebpf:"handled_by_go_conn"`
 	IncomingTraceMap          *ebpf.MapSpec `ebpf:"incoming_trace_map"`
 	JavaTasks                 *ebpf.MapSpec `ebpf:"java_tasks"`
@@ -422,13 +480,16 @@ type BpfMapSpecs struct {
 	PumaTaskConnections       *ebpf.MapSpec `ebpf:"puma_task_connections"`
 	PumaWorkerTasks           *ebpf.MapSpec `ebpf:"puma_worker_tasks"`
 	PythonContextTask         *ebpf.MapSpec `ebpf:"python_context_task"`
+	PythonTaskGeneration      *ebpf.MapSpec `ebpf:"python_task_generation"`
 	PythonTaskState           *ebpf.MapSpec `ebpf:"python_task_state"`
 	PythonThreadState         *ebpf.MapSpec `ebpf:"python_thread_state"`
 	ServerTraces              *ebpf.MapSpec `ebpf:"server_traces"`
 	ServerTracesAux           *ebpf.MapSpec `ebpf:"server_traces_aux"`
 	SkH2ConnFlag              *ebpf.MapSpec `ebpf:"sk_h2_conn_flag"`
+	SkH2Flags                 *ebpf.MapSpec `ebpf:"sk_h2_flags"`
 	SkTpInfoPidMap            *ebpf.MapSpec `ebpf:"sk_tp_info_pid_map"`
 	SockDir                   *ebpf.MapSpec `ebpf:"sock_dir"`
+	SocketCookie              *ebpf.MapSpec `ebpf:"socket_cookie"`
 	TailcallCtxStorage        *ebpf.MapSpec `ebpf:"tailcall_ctx_storage"`
 	TpInfoBackupStorage       *ebpf.MapSpec `ebpf:"tp_info_backup_storage"`
 	TpInfoStorage             *ebpf.MapSpec `ebpf:"tp_info_storage"`
@@ -442,24 +503,28 @@ type BpfMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfVariableSpecs struct {
-	INVALID_POS             *ebpf.VariableSpec `ebpf:"INVALID_POS"`
-	TP                      *ebpf.VariableSpec `ebpf:"TP"`
-	TP_PREFIX               *ebpf.VariableSpec `ebpf:"TP_PREFIX"`
-	TP_PREFIX_SIZE          *ebpf.VariableSpec `ebpf:"TP_PREFIX_SIZE"`
-	TP_SIZE                 *ebpf.VariableSpec `ebpf:"TP_SIZE"`
-	TP_TID_PREFIX           *ebpf.VariableSpec `ebpf:"TP_TID_PREFIX"`
-	TP_TID_PREFIX_SIZE      *ebpf.VariableSpec `ebpf:"TP_TID_PREFIX_SIZE"`
-	DisableBlackBoxCp       *ebpf.VariableSpec `ebpf:"disable_black_box_cp"`
-	FilterPids              *ebpf.VariableSpec `ebpf:"filter_pids"`
-	G_bpfDebug              *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
-	InjectFlags             *ebpf.VariableSpec `ebpf:"inject_flags"`
-	Ip4ip6Prefix            *ebpf.VariableSpec `ebpf:"ip4ip6_prefix"`
-	MaxTransactionTime      *ebpf.VariableSpec `ebpf:"max_transaction_time"`
-	Unused                  *ebpf.VariableSpec `ebpf:"unused"`
-	UnusedHttp2             *ebpf.VariableSpec `ebpf:"unused_http2"`
+	INVALID_POS                *ebpf.VariableSpec `ebpf:"INVALID_POS"`
+	TP                         *ebpf.VariableSpec `ebpf:"TP"`
+	TP_PREFIX                  *ebpf.VariableSpec `ebpf:"TP_PREFIX"`
+	TP_PREFIX_SIZE             *ebpf.VariableSpec `ebpf:"TP_PREFIX_SIZE"`
+	TP_SIZE                    *ebpf.VariableSpec `ebpf:"TP_SIZE"`
+	TP_TID_PREFIX              *ebpf.VariableSpec `ebpf:"TP_TID_PREFIX"`
+	TP_TID_PREFIX_SIZE         *ebpf.VariableSpec `ebpf:"TP_TID_PREFIX_SIZE"`
+	DisableBlackBoxCp          *ebpf.VariableSpec `ebpf:"disable_black_box_cp"`
+	FilterPids                 *ebpf.VariableSpec `ebpf:"filter_pids"`
+	G_bpfDebug                 *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.VariableSpec `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.VariableSpec `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.VariableSpec `ebpf:"g_traces_ctx_v1_enabled"`
+	HighRequestVolume          *ebpf.VariableSpec `ebpf:"high_request_volume"`
+	InjectFlags                *ebpf.VariableSpec `ebpf:"inject_flags"`
+	Ip4ip6Prefix               *ebpf.VariableSpec `ebpf:"ip4ip6_prefix"`
+	MaxTransactionTime         *ebpf.VariableSpec `ebpf:"max_transaction_time"`
+	Unused                     *ebpf.VariableSpec `ebpf:"unused"`
+	UnusedHttp2                *ebpf.VariableSpec `ebpf:"unused_http2"`
 }
 
 // BpfObjects contains all objects after they have been loaded into the kernel.
@@ -491,8 +556,11 @@ type BpfMaps struct {
 	FdMap                     *ebpf.Map `ebpf:"fd_map"`
 	FdToConnection            *ebpf.Map `ebpf:"fd_to_connection"`
 	GoGrpcClientConns         *ebpf.Map `ebpf:"go_grpc_client_conns"`
+	GoH2OwnedStreams          *ebpf.Map `ebpf:"go_h2_owned_streams"`
 	GoOffsetsMap              *ebpf.Map `ebpf:"go_offsets_map"`
 	GoTraceMap                *ebpf.Map `ebpf:"go_trace_map"`
+	GrpcH2OwnedStreams        *ebpf.Map `ebpf:"grpc_h2_owned_streams"`
+	H2WriteExpectedStorage    *ebpf.Map `ebpf:"h2_write_expected_storage"`
 	HandledByGoConn           *ebpf.Map `ebpf:"handled_by_go_conn"`
 	IncomingTraceMap          *ebpf.Map `ebpf:"incoming_trace_map"`
 	JavaTasks                 *ebpf.Map `ebpf:"java_tasks"`
@@ -515,13 +583,16 @@ type BpfMaps struct {
 	PumaTaskConnections       *ebpf.Map `ebpf:"puma_task_connections"`
 	PumaWorkerTasks           *ebpf.Map `ebpf:"puma_worker_tasks"`
 	PythonContextTask         *ebpf.Map `ebpf:"python_context_task"`
+	PythonTaskGeneration      *ebpf.Map `ebpf:"python_task_generation"`
 	PythonTaskState           *ebpf.Map `ebpf:"python_task_state"`
 	PythonThreadState         *ebpf.Map `ebpf:"python_thread_state"`
 	ServerTraces              *ebpf.Map `ebpf:"server_traces"`
 	ServerTracesAux           *ebpf.Map `ebpf:"server_traces_aux"`
 	SkH2ConnFlag              *ebpf.Map `ebpf:"sk_h2_conn_flag"`
+	SkH2Flags                 *ebpf.Map `ebpf:"sk_h2_flags"`
 	SkTpInfoPidMap            *ebpf.Map `ebpf:"sk_tp_info_pid_map"`
 	SockDir                   *ebpf.Map `ebpf:"sock_dir"`
+	SocketCookie              *ebpf.Map `ebpf:"socket_cookie"`
 	TailcallCtxStorage        *ebpf.Map `ebpf:"tailcall_ctx_storage"`
 	TpInfoBackupStorage       *ebpf.Map `ebpf:"tp_info_backup_storage"`
 	TpInfoStorage             *ebpf.Map `ebpf:"tp_info_storage"`
@@ -542,8 +613,11 @@ func (m *BpfMaps) Close() error {
 		m.FdMap,
 		m.FdToConnection,
 		m.GoGrpcClientConns,
+		m.GoH2OwnedStreams,
 		m.GoOffsetsMap,
 		m.GoTraceMap,
+		m.GrpcH2OwnedStreams,
+		m.H2WriteExpectedStorage,
 		m.HandledByGoConn,
 		m.IncomingTraceMap,
 		m.JavaTasks,
@@ -566,13 +640,16 @@ func (m *BpfMaps) Close() error {
 		m.PumaTaskConnections,
 		m.PumaWorkerTasks,
 		m.PythonContextTask,
+		m.PythonTaskGeneration,
 		m.PythonTaskState,
 		m.PythonThreadState,
 		m.ServerTraces,
 		m.ServerTracesAux,
 		m.SkH2ConnFlag,
+		m.SkH2Flags,
 		m.SkTpInfoPidMap,
 		m.SockDir,
+		m.SocketCookie,
 		m.TailcallCtxStorage,
 		m.TpInfoBackupStorage,
 		m.TpInfoStorage,
@@ -587,40 +664,46 @@ func (m *BpfMaps) Close() error {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfVariables struct {
-	INVALID_POS             *ebpf.Variable `ebpf:"INVALID_POS"`
-	TP                      *ebpf.Variable `ebpf:"TP"`
-	TP_PREFIX               *ebpf.Variable `ebpf:"TP_PREFIX"`
-	TP_PREFIX_SIZE          *ebpf.Variable `ebpf:"TP_PREFIX_SIZE"`
-	TP_SIZE                 *ebpf.Variable `ebpf:"TP_SIZE"`
-	TP_TID_PREFIX           *ebpf.Variable `ebpf:"TP_TID_PREFIX"`
-	TP_TID_PREFIX_SIZE      *ebpf.Variable `ebpf:"TP_TID_PREFIX_SIZE"`
-	DisableBlackBoxCp       *ebpf.Variable `ebpf:"disable_black_box_cp"`
-	FilterPids              *ebpf.Variable `ebpf:"filter_pids"`
-	G_bpfDebug              *ebpf.Variable `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
-	InjectFlags             *ebpf.Variable `ebpf:"inject_flags"`
-	Ip4ip6Prefix            *ebpf.Variable `ebpf:"ip4ip6_prefix"`
-	MaxTransactionTime      *ebpf.Variable `ebpf:"max_transaction_time"`
-	Unused                  *ebpf.Variable `ebpf:"unused"`
-	UnusedHttp2             *ebpf.Variable `ebpf:"unused_http2"`
+	INVALID_POS                *ebpf.Variable `ebpf:"INVALID_POS"`
+	TP                         *ebpf.Variable `ebpf:"TP"`
+	TP_PREFIX                  *ebpf.Variable `ebpf:"TP_PREFIX"`
+	TP_PREFIX_SIZE             *ebpf.Variable `ebpf:"TP_PREFIX_SIZE"`
+	TP_SIZE                    *ebpf.Variable `ebpf:"TP_SIZE"`
+	TP_TID_PREFIX              *ebpf.Variable `ebpf:"TP_TID_PREFIX"`
+	TP_TID_PREFIX_SIZE         *ebpf.Variable `ebpf:"TP_TID_PREFIX_SIZE"`
+	DisableBlackBoxCp          *ebpf.Variable `ebpf:"disable_black_box_cp"`
+	FilterPids                 *ebpf.Variable `ebpf:"filter_pids"`
+	G_bpfDebug                 *ebpf.Variable `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.Variable `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.Variable `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.Variable `ebpf:"g_traces_ctx_v1_enabled"`
+	HighRequestVolume          *ebpf.Variable `ebpf:"high_request_volume"`
+	InjectFlags                *ebpf.Variable `ebpf:"inject_flags"`
+	Ip4ip6Prefix               *ebpf.Variable `ebpf:"ip4ip6_prefix"`
+	MaxTransactionTime         *ebpf.Variable `ebpf:"max_transaction_time"`
+	Unused                     *ebpf.Variable `ebpf:"unused"`
+	UnusedHttp2                *ebpf.Variable `ebpf:"unused_http2"`
 }
 
 // BpfPrograms contains all programs after they have been loaded into the kernel.
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfPrograms struct {
-	ObiPacketExtender                 *ebpf.Program `ebpf:"obi_packet_extender"`
-	ObiPacketExtenderCreateH2Tp       *ebpf.Program `ebpf:"obi_packet_extender_create_h2_tp"`
-	ObiPacketExtenderCreateTp         *ebpf.Program `ebpf:"obi_packet_extender_create_tp"`
-	ObiPacketExtenderDetectH2         *ebpf.Program `ebpf:"obi_packet_extender_detect_h2"`
-	ObiPacketExtenderFindExistingH2Tp *ebpf.Program `ebpf:"obi_packet_extender_find_existing_h2_tp"`
-	ObiPacketExtenderFindExistingTp   *ebpf.Program `ebpf:"obi_packet_extender_find_existing_tp"`
-	ObiPacketExtenderValidateH2Tp     *ebpf.Program `ebpf:"obi_packet_extender_validate_h2_tp"`
-	ObiPacketExtenderWriteH2Tp        *ebpf.Program `ebpf:"obi_packet_extender_write_h2_tp"`
-	ObiPacketExtenderWriteMsgTp       *ebpf.Program `ebpf:"obi_packet_extender_write_msg_tp"`
-	ObiSockmapTracker                 *ebpf.Program `ebpf:"obi_sockmap_tracker"`
+	ObiPacketExtender                    *ebpf.Program `ebpf:"obi_packet_extender"`
+	ObiPacketExtenderCreateH2Tp          *ebpf.Program `ebpf:"obi_packet_extender_create_h2_tp"`
+	ObiPacketExtenderCreateTp            *ebpf.Program `ebpf:"obi_packet_extender_create_tp"`
+	ObiPacketExtenderDetectH2            *ebpf.Program `ebpf:"obi_packet_extender_detect_h2"`
+	ObiPacketExtenderFindExistingH2Tp    *ebpf.Program `ebpf:"obi_packet_extender_find_existing_h2_tp"`
+	ObiPacketExtenderFindExistingTp      *ebpf.Program `ebpf:"obi_packet_extender_find_existing_tp"`
+	ObiPacketExtenderSniffH2             *ebpf.Program `ebpf:"obi_packet_extender_sniff_h2"`
+	ObiPacketExtenderValidateH2Tp        *ebpf.Program `ebpf:"obi_packet_extender_validate_h2_tp"`
+	ObiPacketExtenderWriteH2Tp           *ebpf.Program `ebpf:"obi_packet_extender_write_h2_tp"`
+	ObiPacketExtenderWriteH2TpNoRollback *ebpf.Program `ebpf:"obi_packet_extender_write_h2_tp_no_rollback"`
+	ObiPacketExtenderWriteMsgTp          *ebpf.Program `ebpf:"obi_packet_extender_write_msg_tp"`
+	ObiSockmapTracker                    *ebpf.Program `ebpf:"obi_sockmap_tracker"`
 }
 
 func (p *BpfPrograms) Close() error {
@@ -631,8 +714,10 @@ func (p *BpfPrograms) Close() error {
 		p.ObiPacketExtenderDetectH2,
 		p.ObiPacketExtenderFindExistingH2Tp,
 		p.ObiPacketExtenderFindExistingTp,
+		p.ObiPacketExtenderSniffH2,
 		p.ObiPacketExtenderValidateH2Tp,
 		p.ObiPacketExtenderWriteH2Tp,
+		p.ObiPacketExtenderWriteH2TpNoRollback,
 		p.ObiPacketExtenderWriteMsgTp,
 		p.ObiSockmapTracker,
 	)

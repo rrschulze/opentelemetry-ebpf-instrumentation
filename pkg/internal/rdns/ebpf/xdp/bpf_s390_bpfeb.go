@@ -16,13 +16,19 @@ import (
 //
 // Used for safe lookups in a Collection or CollectionSpec.
 const (
-	BpfMapDebugEvents             = "debug_events"
-	BpfMapRingBuffer              = "ring_buffer"
-	BpfProgDnsResponseTracker     = "dns_response_tracker"
-	BpfVarG_bpfDebug              = "g_bpf_debug"
-	BpfVarG_bpfHeaderPropagation  = "g_bpf_header_propagation"
-	BpfVarG_bpfLoopEnabled        = "g_bpf_loop_enabled"
-	BpfVarG_bpfTraceparentEnabled = "g_bpf_traceparent_enabled"
+	BpfMapDataOffStorage             = "data_off_storage"
+	BpfMapDebugEvents                = "debug_events"
+	BpfMapRdnsXdpProgs               = "rdns_xdp_progs"
+	BpfMapRingBuffer                 = "ring_buffer"
+	BpfProgDnsResponseTracker        = "dns_response_tracker"
+	BpfProgParseDnsResponse          = "parse_dns_response"
+	BpfVarG_bpfDebug                 = "g_bpf_debug"
+	BpfVarG_bpfHeaderPropagation     = "g_bpf_header_propagation"
+	BpfVarG_bpfLoopEnabled           = "g_bpf_loop_enabled"
+	BpfVarG_bpfProbeWriteUserEnabled = "g_bpf_probe_write_user_enabled"
+	BpfVarG_bpfTraceparentEnabled    = "g_bpf_traceparent_enabled"
+	BpfVarG_goH2WriteFailStep        = "g_go_h2_write_fail_step"
+	BpfVarG_tracesCtxV1Enabled       = "g_traces_ctx_v1_enabled"
 )
 
 // LoadBpf returns the embedded CollectionSpec for Bpf.
@@ -68,24 +74,30 @@ type BpfSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfProgramSpecs struct {
 	DnsResponseTracker *ebpf.ProgramSpec `ebpf:"dns_response_tracker"`
+	ParseDnsResponse   *ebpf.ProgramSpec `ebpf:"parse_dns_response"`
 }
 
 // BpfMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfMapSpecs struct {
-	DebugEvents *ebpf.MapSpec `ebpf:"debug_events"`
-	RingBuffer  *ebpf.MapSpec `ebpf:"ring_buffer"`
+	DataOffStorage *ebpf.MapSpec `ebpf:"data_off_storage"`
+	DebugEvents    *ebpf.MapSpec `ebpf:"debug_events"`
+	RdnsXdpProgs   *ebpf.MapSpec `ebpf:"rdns_xdp_progs"`
+	RingBuffer     *ebpf.MapSpec `ebpf:"ring_buffer"`
 }
 
 // BpfVariableSpecs contains global variables before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfVariableSpecs struct {
-	G_bpfDebug              *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
+	G_bpfDebug                 *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.VariableSpec `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.VariableSpec `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.VariableSpec `ebpf:"g_traces_ctx_v1_enabled"`
 }
 
 // BpfObjects contains all objects after they have been loaded into the kernel.
@@ -108,13 +120,17 @@ func (o *BpfObjects) Close() error {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfMaps struct {
-	DebugEvents *ebpf.Map `ebpf:"debug_events"`
-	RingBuffer  *ebpf.Map `ebpf:"ring_buffer"`
+	DataOffStorage *ebpf.Map `ebpf:"data_off_storage"`
+	DebugEvents    *ebpf.Map `ebpf:"debug_events"`
+	RdnsXdpProgs   *ebpf.Map `ebpf:"rdns_xdp_progs"`
+	RingBuffer     *ebpf.Map `ebpf:"ring_buffer"`
 }
 
 func (m *BpfMaps) Close() error {
 	return _BpfClose(
+		m.DataOffStorage,
 		m.DebugEvents,
+		m.RdnsXdpProgs,
 		m.RingBuffer,
 	)
 }
@@ -123,10 +139,13 @@ func (m *BpfMaps) Close() error {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfVariables struct {
-	G_bpfDebug              *ebpf.Variable `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
+	G_bpfDebug                 *ebpf.Variable `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.Variable `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.Variable `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.Variable `ebpf:"g_traces_ctx_v1_enabled"`
 }
 
 // BpfPrograms contains all programs after they have been loaded into the kernel.
@@ -134,11 +153,13 @@ type BpfVariables struct {
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfPrograms struct {
 	DnsResponseTracker *ebpf.Program `ebpf:"dns_response_tracker"`
+	ParseDnsResponse   *ebpf.Program `ebpf:"parse_dns_response"`
 }
 
 func (p *BpfPrograms) Close() error {
 	return _BpfClose(
 		p.DnsResponseTracker,
+		p.ParseDnsResponse,
 	)
 }
 

@@ -46,15 +46,16 @@ type BpfConnectionInfoT struct {
 }
 
 type BpfDnsReqT struct {
-	_     structs.HostLayout
-	Flags uint8
-	DnsQ  uint8
-	Pad1  [2]uint8
-	Len   uint32
-	Conn  BpfConnectionInfoT
-	Id    uint16
-	Pad2  [2]uint8
-	Tp    struct {
+	_            structs.HostLayout
+	Flags        uint8
+	DnsQ         uint8
+	ParentStatus uint8
+	Pad1         [1]uint8
+	Len          uint32
+	Conn         BpfConnectionInfoT
+	Id           uint16
+	Pad2         [2]uint8
+	Tp           struct {
 		_        structs.HostLayout
 		TraceId  [16]uint8
 		SpanId   [8]uint8
@@ -73,18 +74,72 @@ type BpfDnsReqT struct {
 	Pad3 [4]uint8
 }
 
+type BpfEventType uint8
+
+const (
+	BpfEventTypeK_eventTypeHttpRequest            BpfEventType = 1
+	BpfEventTypeK_eventTypeGrpcRequest            BpfEventType = 2
+	BpfEventTypeK_eventTypeHttpClient             BpfEventType = 3
+	BpfEventTypeK_eventTypeGrpcClient             BpfEventType = 4
+	BpfEventTypeK_eventTypeSqlClient              BpfEventType = 5
+	BpfEventTypeK_eventTypeK_httpRequest          BpfEventType = 6
+	BpfEventTypeK_eventTypeK_http2Request         BpfEventType = 7
+	BpfEventTypeK_eventTypeTcpRequest             BpfEventType = 8
+	BpfEventTypeK_eventTypeGoKafka                BpfEventType = 9
+	BpfEventTypeK_eventTypeGoRedis                BpfEventType = 10
+	BpfEventTypeK_eventTypeGoKafkaSeg             BpfEventType = 11
+	BpfEventTypeK_eventTypeTcpLargeBuffer         BpfEventType = 12
+	BpfEventTypeK_eventTypeGoSpan                 BpfEventType = 13
+	BpfEventTypeK_eventTypeGoMongo                BpfEventType = 14
+	BpfEventTypeK_eventTypeFailedConnect          BpfEventType = 15
+	BpfEventTypeK_eventTypeDnsRequest             BpfEventType = 16
+	BpfEventTypeK_eventTypeGoRuntimeMetrics       BpfEventType = 17
+	BpfEventTypeK_eventTypeGoChannelLink          BpfEventType = 18
+	BpfEventTypeK_eventTypeJvmMemPoolGc           BpfEventType = 19
+	BpfEventTypeK_eventTypeGoAutoSpan             BpfEventType = 20
+	BpfEventTypeK_eventTypeGoRuntimeHistogram     BpfEventType = 21
+	BpfEventTypeK_eventTypeGoAutoActivated        BpfEventType = 22
+	BpfEventTypeK_eventTypeNodejsEventloop        BpfEventType = 23
+	BpfEventTypeK_eventTypeNodeSpan               BpfEventType = 24
+	BpfEventTypeK_eventTypeK_http2RequestHeaders  BpfEventType = 25
+	BpfEventTypeK_eventTypeK_http2ResponseHeaders BpfEventType = 26
+	BpfEventTypeK_eventTypeNodejsGc               BpfEventType = 27
+	BpfEventTypeK_eventTypeNodejsHeapSpace        BpfEventType = 28
+	BpfEventTypeK_eventTypePythonRuntimeMetrics   BpfEventType = 29
+	BpfEventTypeK_eventTypeJvmRuntimeMetrics      BpfEventType = 30
+	BpfEventTypeK_eventTypeNodejsResource         BpfEventType = 31
+	BpfEventTypeK_eventTypeJvmGcDuration          BpfEventType = 32
+)
+
+type BpfGoAutoSpanT struct {
+	_    structs.HostLayout
+	Type uint8
+	Pad  [3]uint8
+	Size uint32
+	Pid  struct {
+		_       structs.HostLayout
+		HostPid uint32
+		UserPid uint32
+		Ns      uint32
+	}
+	Buf [0]uint8
+}
+
 type BpfHttp2GrpcRequestT struct {
 	_               structs.HostLayout
 	Flags           uint8
 	Ssl             uint8
 	Type            uint8
-	Pad0            [1]uint8
+	ParentStatus    uint8
 	ConnInfo        BpfConnectionInfoT
 	StartMonotimeNs uint64
 	EndMonotimeNs   uint64
 	Data            [256]uint8
 	RetData         [64]uint8
 	Len             int32
+	StreamId        uint32
+	HpackFlags      uint8
+	Pad1            [3]uint8
 	Pid             struct {
 		_       structs.HostLayout
 		HostPid uint32
@@ -104,17 +159,18 @@ type BpfHttp2GrpcRequestT struct {
 }
 
 type BpfHttpInfoT struct {
-	_               structs.HostLayout
-	Flags           uint8
-	Type            uint8
-	Ssl             uint8
-	Delayed         uint8
-	ConnInfo        BpfConnectionInfoT
-	StartMonotimeNs uint64
-	EndMonotimeNs   uint64
-	ReqMonotimeNs   uint64
-	ExtraId         uint64
-	Tp              struct {
+	_                      structs.HostLayout
+	Flags                  uint8
+	Type                   uint8
+	Ssl                    uint8
+	Delayed                uint8
+	ConnInfo               BpfConnectionInfoT
+	StartMonotimeNs        uint64
+	EndMonotimeNs          uint64
+	ReqMonotimeNs          uint64
+	ExtraId                uint64
+	ResponseBytesAtRequest uint64
+	Tp                     struct {
 		_        structs.HostLayout
 		TraceId  [16]uint8
 		SpanId   [8]uint8
@@ -129,18 +185,19 @@ type BpfHttpInfoT struct {
 		UserPid uint32
 		Ns      uint32
 	}
-	Len             uint32
-	RespLen         uint32
-	TaskTid         uint32
-	LbReqBytes      uint32
-	LbResBytes      uint32
-	Status          uint16
-	Buf             [256]uint8
-	HasLargeBuffers uint8
-	Direction       uint8
-	Submitted       uint8
-	EventSource     uint8
-	Pad             [2]uint8
+	Len                 uint32
+	RespLen             uint32
+	TaskTid             uint32
+	LbReqBytes          uint32
+	LbResBytes          uint32
+	Status              uint16
+	Buf                 [256]uint8
+	HasLargeBuffers     uint8
+	Direction           uint8
+	Submitted           uint8
+	ParentStatus        uint8
+	EventSource         uint8
+	ResponseObservation uint8
 }
 
 type BpfHttpRequestTraceT struct {
@@ -157,8 +214,10 @@ type BpfHttpRequestTraceT struct {
 	ContentLength     int64
 	ResponseLength    int64
 	Path              [100]uint8
+	RawQuery          [100]uint8
 	Pattern           [96]uint8
 	Host              [100]uint8
+	Pad1              [4]uint8
 	Tp                struct {
 		_        structs.HostLayout
 		TraceId  [16]uint8
@@ -248,6 +307,25 @@ type BpfMongoGoClientReqT struct {
 	}
 }
 
+type BpfNodeSpanEventT struct {
+	_             structs.HostLayout
+	Type          uint8
+	HasParentCtx  uint8
+	Pad           [2]uint8
+	PayloadLen    uint32
+	EndKtime      uint64
+	ParentTraceId [16]uint8
+	ParentSpanId  [8]uint8
+	Pid           struct {
+		_       structs.HostLayout
+		HostPid uint32
+		UserPid uint32
+		Ns      uint32
+	}
+	Payload [2048]uint8
+	Epad    [4]uint8
+}
+
 type BpfOtelSpanT struct {
 	_         structs.HostLayout
 	Type      uint8
@@ -303,6 +381,22 @@ type BpfOtelSpanT struct {
 	}
 	Epad [6]uint8
 }
+
+type BpfProtocolType uint8
+
+const (
+	BpfProtocolTypeK_protocolTypeUnknown   BpfProtocolType = 0
+	BpfProtocolTypeK_protocolTypeMysql     BpfProtocolType = 1
+	BpfProtocolTypeK_protocolTypePostgres  BpfProtocolType = 2
+	BpfProtocolTypeK_protocolTypeHttp      BpfProtocolType = 3
+	BpfProtocolTypeK_protocolTypeKafka     BpfProtocolType = 4
+	BpfProtocolTypeK_protocolTypeMqtt      BpfProtocolType = 5
+	BpfProtocolTypeK_protocolTypeMssql     BpfProtocolType = 6
+	BpfProtocolTypeK_protocolTypeSunrpc    BpfProtocolType = 7
+	BpfProtocolTypeK_protocolTypeNats      BpfProtocolType = 8
+	BpfProtocolTypeK_protocolTypeAmqp      BpfProtocolType = 9
+	BpfProtocolTypeK_protocolTypeAerospike BpfProtocolType = 10
+)
 
 type BpfRedisClientReqT struct {
 	_               structs.HostLayout
@@ -367,7 +461,8 @@ type BpfTcpLargeBufferT struct {
 	Len        uint32
 	ConnInfo   BpfConnectionInfoT
 	Kind       uint8
-	Pad        [3]uint8
+	Source     uint8
+	Pad        [2]uint8
 	Tp         struct {
 		_        structs.HostLayout
 		TraceId  [16]uint8
@@ -386,9 +481,10 @@ type BpfTcpReqT struct {
 	Ssl             uint8
 	Direction       uint8
 	HasLargeBuffers uint8
-	ProtocolType    uint8
+	ProtocolType    BpfProtocolType
 	IsServer        bool
-	Pad1            [2]uint8
+	ParentStatus    uint8
+	Pad1            [1]uint8
 	ConnInfo        BpfConnectionInfoT
 	Len             uint32
 	StartMonotimeNs uint64
@@ -425,25 +521,32 @@ type BpfTcpReqT struct {
 //
 // Used for safe lookups in a Collection or CollectionSpec.
 const (
-	BpfMapDebugEvents             = "debug_events"
-	BpfVarG_bpfDebug              = "g_bpf_debug"
-	BpfVarG_bpfHeaderPropagation  = "g_bpf_header_propagation"
-	BpfVarG_bpfLoopEnabled        = "g_bpf_loop_enabled"
-	BpfVarG_bpfTraceparentEnabled = "g_bpf_traceparent_enabled"
-	BpfVarIp4ip6Prefix            = "ip4ip6_prefix"
-	BpfVarUnused                  = "unused"
-	BpfVarUnused10                = "unused_10"
-	BpfVarUnused11                = "unused_11"
-	BpfVarUnused12                = "unused_12"
-	BpfVarUnused13                = "unused_13"
-	BpfVarUnused3                 = "unused_3"
-	BpfVarUnused4                 = "unused_4"
-	BpfVarUnused5                 = "unused_5"
-	BpfVarUnused6                 = "unused_6"
-	BpfVarUnused7                 = "unused_7"
-	BpfVarUnused8                 = "unused_8"
-	BpfVarUnused9                 = "unused_9"
-	BpfVarUnusedHttp2             = "unused_http2"
+	BpfMapDebugEvents                = "debug_events"
+	BpfVarG_bpfDebug                 = "g_bpf_debug"
+	BpfVarG_bpfHeaderPropagation     = "g_bpf_header_propagation"
+	BpfVarG_bpfLoopEnabled           = "g_bpf_loop_enabled"
+	BpfVarG_bpfProbeWriteUserEnabled = "g_bpf_probe_write_user_enabled"
+	BpfVarG_bpfTraceparentEnabled    = "g_bpf_traceparent_enabled"
+	BpfVarG_goH2WriteFailStep        = "g_go_h2_write_fail_step"
+	BpfVarG_tracesCtxV1Enabled       = "g_traces_ctx_v1_enabled"
+	BpfVarIp4ip6Prefix               = "ip4ip6_prefix"
+	BpfVarUnused                     = "unused"
+	BpfVarUnused10                   = "unused_10"
+	BpfVarUnused11                   = "unused_11"
+	BpfVarUnused12                   = "unused_12"
+	BpfVarUnused13                   = "unused_13"
+	BpfVarUnused14                   = "unused_14"
+	BpfVarUnused15                   = "unused_15"
+	BpfVarUnused16                   = "unused_16"
+	BpfVarUnused17                   = "unused_17"
+	BpfVarUnused3                    = "unused_3"
+	BpfVarUnused4                    = "unused_4"
+	BpfVarUnused5                    = "unused_5"
+	BpfVarUnused6                    = "unused_6"
+	BpfVarUnused7                    = "unused_7"
+	BpfVarUnused8                    = "unused_8"
+	BpfVarUnused9                    = "unused_9"
+	BpfVarUnusedHttp2                = "unused_http2"
 )
 
 // LoadBpf returns the embedded CollectionSpec for Bpf.
@@ -501,24 +604,31 @@ type BpfMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfVariableSpecs struct {
-	G_bpfDebug              *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
-	Ip4ip6Prefix            *ebpf.VariableSpec `ebpf:"ip4ip6_prefix"`
-	Unused                  *ebpf.VariableSpec `ebpf:"unused"`
-	Unused10                *ebpf.VariableSpec `ebpf:"unused_10"`
-	Unused11                *ebpf.VariableSpec `ebpf:"unused_11"`
-	Unused12                *ebpf.VariableSpec `ebpf:"unused_12"`
-	Unused13                *ebpf.VariableSpec `ebpf:"unused_13"`
-	Unused3                 *ebpf.VariableSpec `ebpf:"unused_3"`
-	Unused4                 *ebpf.VariableSpec `ebpf:"unused_4"`
-	Unused5                 *ebpf.VariableSpec `ebpf:"unused_5"`
-	Unused6                 *ebpf.VariableSpec `ebpf:"unused_6"`
-	Unused7                 *ebpf.VariableSpec `ebpf:"unused_7"`
-	Unused8                 *ebpf.VariableSpec `ebpf:"unused_8"`
-	Unused9                 *ebpf.VariableSpec `ebpf:"unused_9"`
-	UnusedHttp2             *ebpf.VariableSpec `ebpf:"unused_http2"`
+	G_bpfDebug                 *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.VariableSpec `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.VariableSpec `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.VariableSpec `ebpf:"g_traces_ctx_v1_enabled"`
+	Ip4ip6Prefix               *ebpf.VariableSpec `ebpf:"ip4ip6_prefix"`
+	Unused                     *ebpf.VariableSpec `ebpf:"unused"`
+	Unused10                   *ebpf.VariableSpec `ebpf:"unused_10"`
+	Unused11                   *ebpf.VariableSpec `ebpf:"unused_11"`
+	Unused12                   *ebpf.VariableSpec `ebpf:"unused_12"`
+	Unused13                   *ebpf.VariableSpec `ebpf:"unused_13"`
+	Unused14                   *ebpf.VariableSpec `ebpf:"unused_14"`
+	Unused15                   *ebpf.VariableSpec `ebpf:"unused_15"`
+	Unused16                   *ebpf.VariableSpec `ebpf:"unused_16"`
+	Unused17                   *ebpf.VariableSpec `ebpf:"unused_17"`
+	Unused3                    *ebpf.VariableSpec `ebpf:"unused_3"`
+	Unused4                    *ebpf.VariableSpec `ebpf:"unused_4"`
+	Unused5                    *ebpf.VariableSpec `ebpf:"unused_5"`
+	Unused6                    *ebpf.VariableSpec `ebpf:"unused_6"`
+	Unused7                    *ebpf.VariableSpec `ebpf:"unused_7"`
+	Unused8                    *ebpf.VariableSpec `ebpf:"unused_8"`
+	Unused9                    *ebpf.VariableSpec `ebpf:"unused_9"`
+	UnusedHttp2                *ebpf.VariableSpec `ebpf:"unused_http2"`
 }
 
 // BpfObjects contains all objects after they have been loaded into the kernel.
@@ -554,24 +664,31 @@ func (m *BpfMaps) Close() error {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfVariables struct {
-	G_bpfDebug              *ebpf.Variable `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
-	Ip4ip6Prefix            *ebpf.Variable `ebpf:"ip4ip6_prefix"`
-	Unused                  *ebpf.Variable `ebpf:"unused"`
-	Unused10                *ebpf.Variable `ebpf:"unused_10"`
-	Unused11                *ebpf.Variable `ebpf:"unused_11"`
-	Unused12                *ebpf.Variable `ebpf:"unused_12"`
-	Unused13                *ebpf.Variable `ebpf:"unused_13"`
-	Unused3                 *ebpf.Variable `ebpf:"unused_3"`
-	Unused4                 *ebpf.Variable `ebpf:"unused_4"`
-	Unused5                 *ebpf.Variable `ebpf:"unused_5"`
-	Unused6                 *ebpf.Variable `ebpf:"unused_6"`
-	Unused7                 *ebpf.Variable `ebpf:"unused_7"`
-	Unused8                 *ebpf.Variable `ebpf:"unused_8"`
-	Unused9                 *ebpf.Variable `ebpf:"unused_9"`
-	UnusedHttp2             *ebpf.Variable `ebpf:"unused_http2"`
+	G_bpfDebug                 *ebpf.Variable `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.Variable `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.Variable `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.Variable `ebpf:"g_traces_ctx_v1_enabled"`
+	Ip4ip6Prefix               *ebpf.Variable `ebpf:"ip4ip6_prefix"`
+	Unused                     *ebpf.Variable `ebpf:"unused"`
+	Unused10                   *ebpf.Variable `ebpf:"unused_10"`
+	Unused11                   *ebpf.Variable `ebpf:"unused_11"`
+	Unused12                   *ebpf.Variable `ebpf:"unused_12"`
+	Unused13                   *ebpf.Variable `ebpf:"unused_13"`
+	Unused14                   *ebpf.Variable `ebpf:"unused_14"`
+	Unused15                   *ebpf.Variable `ebpf:"unused_15"`
+	Unused16                   *ebpf.Variable `ebpf:"unused_16"`
+	Unused17                   *ebpf.Variable `ebpf:"unused_17"`
+	Unused3                    *ebpf.Variable `ebpf:"unused_3"`
+	Unused4                    *ebpf.Variable `ebpf:"unused_4"`
+	Unused5                    *ebpf.Variable `ebpf:"unused_5"`
+	Unused6                    *ebpf.Variable `ebpf:"unused_6"`
+	Unused7                    *ebpf.Variable `ebpf:"unused_7"`
+	Unused8                    *ebpf.Variable `ebpf:"unused_8"`
+	Unused9                    *ebpf.Variable `ebpf:"unused_9"`
+	UnusedHttp2                *ebpf.Variable `ebpf:"unused_http2"`
 }
 
 // BpfPrograms contains all programs after they have been loaded into the kernel.

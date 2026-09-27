@@ -76,23 +76,26 @@ type BpfCudaMemcpyT struct {
 //
 // Used for safe lookups in a Collection or CollectionSpec.
 const (
-	BpfMapDebugEvents             = "debug_events"
-	BpfMapGpuEvents               = "gpu_events"
-	BpfMapPidCache                = "pid_cache"
-	BpfMapValidPids               = "valid_pids"
-	BpfProgObiCudaLaunch          = "obi_cuda_launch"
-	BpfProgObiCudaMalloc          = "obi_cuda_malloc"
-	BpfProgObiCudaMemcpy          = "obi_cuda_memcpy"
-	BpfProgObiGraphLaunch         = "obi_graph_launch"
-	BpfVarFilterPids              = "filter_pids"
-	BpfVarG_bpfDebug              = "g_bpf_debug"
-	BpfVarG_bpfHeaderPropagation  = "g_bpf_header_propagation"
-	BpfVarG_bpfLoopEnabled        = "g_bpf_loop_enabled"
-	BpfVarG_bpfTraceparentEnabled = "g_bpf_traceparent_enabled"
-	BpfVarUnusedGpu               = "unused_gpu"
-	BpfVarUnusedGpu1              = "unused_gpu1"
-	BpfVarUnusedGpu2              = "unused_gpu2"
-	BpfVarUnusedGpu3              = "unused_gpu3"
+	BpfMapDebugEvents                = "debug_events"
+	BpfMapGpuEvents                  = "gpu_events"
+	BpfMapPidCache                   = "pid_cache"
+	BpfMapValidPids                  = "valid_pids"
+	BpfProgObiCudaLaunch             = "obi_cuda_launch"
+	BpfProgObiCudaMalloc             = "obi_cuda_malloc"
+	BpfProgObiCudaMemcpy             = "obi_cuda_memcpy"
+	BpfProgObiGraphLaunch            = "obi_graph_launch"
+	BpfVarFilterPids                 = "filter_pids"
+	BpfVarG_bpfDebug                 = "g_bpf_debug"
+	BpfVarG_bpfHeaderPropagation     = "g_bpf_header_propagation"
+	BpfVarG_bpfLoopEnabled           = "g_bpf_loop_enabled"
+	BpfVarG_bpfProbeWriteUserEnabled = "g_bpf_probe_write_user_enabled"
+	BpfVarG_bpfTraceparentEnabled    = "g_bpf_traceparent_enabled"
+	BpfVarG_goH2WriteFailStep        = "g_go_h2_write_fail_step"
+	BpfVarG_tracesCtxV1Enabled       = "g_traces_ctx_v1_enabled"
+	BpfVarUnusedGpu                  = "unused_gpu"
+	BpfVarUnusedGpu1                 = "unused_gpu1"
+	BpfVarUnusedGpu2                 = "unused_gpu2"
+	BpfVarUnusedGpu3                 = "unused_gpu3"
 )
 
 // LoadBpf returns the embedded CollectionSpec for Bpf.
@@ -157,15 +160,18 @@ type BpfMapSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfVariableSpecs struct {
-	FilterPids              *ebpf.VariableSpec `ebpf:"filter_pids"`
-	G_bpfDebug              *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
-	UnusedGpu               *ebpf.VariableSpec `ebpf:"unused_gpu"`
-	UnusedGpu1              *ebpf.VariableSpec `ebpf:"unused_gpu1"`
-	UnusedGpu2              *ebpf.VariableSpec `ebpf:"unused_gpu2"`
-	UnusedGpu3              *ebpf.VariableSpec `ebpf:"unused_gpu3"`
+	FilterPids                 *ebpf.VariableSpec `ebpf:"filter_pids"`
+	G_bpfDebug                 *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.VariableSpec `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.VariableSpec `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.VariableSpec `ebpf:"g_traces_ctx_v1_enabled"`
+	UnusedGpu                  *ebpf.VariableSpec `ebpf:"unused_gpu"`
+	UnusedGpu1                 *ebpf.VariableSpec `ebpf:"unused_gpu1"`
+	UnusedGpu2                 *ebpf.VariableSpec `ebpf:"unused_gpu2"`
+	UnusedGpu3                 *ebpf.VariableSpec `ebpf:"unused_gpu3"`
 }
 
 // BpfObjects contains all objects after they have been loaded into the kernel.
@@ -207,15 +213,18 @@ func (m *BpfMaps) Close() error {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfVariables struct {
-	FilterPids              *ebpf.Variable `ebpf:"filter_pids"`
-	G_bpfDebug              *ebpf.Variable `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation  *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled        *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
-	UnusedGpu               *ebpf.Variable `ebpf:"unused_gpu"`
-	UnusedGpu1              *ebpf.Variable `ebpf:"unused_gpu1"`
-	UnusedGpu2              *ebpf.Variable `ebpf:"unused_gpu2"`
-	UnusedGpu3              *ebpf.Variable `ebpf:"unused_gpu3"`
+	FilterPids                 *ebpf.Variable `ebpf:"filter_pids"`
+	G_bpfDebug                 *ebpf.Variable `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation     *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled           *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled *ebpf.Variable `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled    *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep        *ebpf.Variable `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled       *ebpf.Variable `ebpf:"g_traces_ctx_v1_enabled"`
+	UnusedGpu                  *ebpf.Variable `ebpf:"unused_gpu"`
+	UnusedGpu1                 *ebpf.Variable `ebpf:"unused_gpu1"`
+	UnusedGpu2                 *ebpf.Variable `ebpf:"unused_gpu2"`
+	UnusedGpu3                 *ebpf.Variable `ebpf:"unused_gpu3"`
 }
 
 // BpfPrograms contains all programs after they have been loaded into the kernel.

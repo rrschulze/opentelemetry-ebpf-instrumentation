@@ -13,10 +13,22 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type BpfAerospikeStateDataT struct {
+	_                      structs.HostLayout
+	ResponseBytesRemaining int64
+}
+
 type BpfBackupBufferT struct {
 	_      structs.HostLayout
 	Buf    [256]uint8
 	TcpSeq uint32
+}
+
+type BpfBioSslInfoT struct {
+	_      structs.HostLayout
+	Ssl    uint64
+	IsWbio uint8
+	Pad    [7]uint8
 }
 
 type BpfCallProtocolArgsT struct {
@@ -39,6 +51,7 @@ type BpfCallProtocolArgsT struct {
 	Pad2            uint16
 	U_buf           uint64
 	SelfRefParentId uint64
+	SockPtr         uint64
 	LwThread        uint64
 }
 
@@ -96,6 +109,12 @@ type BpfGoAddrKeyT struct {
 	Addr uint64
 }
 
+type BpfGoExecutableKeyT struct {
+	_   structs.HostLayout
+	Dev uint64
+	Ino uint64
+}
+
 type BpfGoroutineMetadata struct {
 	_         structs.HostLayout
 	Parent    BpfGoAddrKeyT
@@ -106,15 +125,30 @@ type BpfGrpcFramesCtxT struct {
 	_               structs.HostLayout
 	PrevInfo        BpfHttp2GrpcRequestT
 	HasPrevInfo     uint8
-	FoundDataFrame  uint8
 	Iterations      uint8
 	TerminateSearch uint8
+	Pad             uint8
 	Pos             int32
 	SavedBufPos     int32
 	SavedStreamId   uint32
 	Args            BpfCallProtocolArgsT
 	Stream          BpfHttp2ConnStreamT
-	Pad             [4]uint8
+	Huff            struct {
+		_   structs.HostLayout
+		At  uint16
+		Len uint8
+		Pad uint8
+	}
+	HuffScan struct {
+		_      structs.HostLayout
+		At     [3]uint16
+		Len    [3]uint8
+		Count  uint8
+		Idx    uint8
+		Done   uint8
+		Resume uint16
+		Pad    [2]uint8
+	}
 }
 
 type BpfGrpcTransportsT struct {
@@ -125,11 +159,21 @@ type BpfGrpcTransportsT struct {
 	Tp   BpfTpInfoT
 }
 
+type BpfH2CutFrameT struct {
+	_    structs.HostLayout
+	Skip uint32
+	Len  uint16
+	Pad  [2]uint8
+	Data [256]uint8
+}
+
 type BpfHttp2ConnInfoDataT struct {
-	_     structs.HostLayout
-	Id    uint64
-	Flags uint8
-	Pad   [7]uint8
+	_                 structs.HostLayout
+	Id                uint64
+	Flags             uint8
+	ReqHpackPoisoned  uint8
+	RespHpackPoisoned uint8
+	Pad               [5]uint8
 }
 
 type BpfHttp2ConnStreamT struct {
@@ -143,65 +187,71 @@ type BpfHttp2GrpcRequestT struct {
 	Flags           uint8
 	Ssl             uint8
 	Type            uint8
-	Pad0            [1]uint8
+	ParentStatus    uint8
 	ConnInfo        BpfConnectionInfoT
 	StartMonotimeNs uint64
 	EndMonotimeNs   uint64
 	Data            [256]uint8
 	RetData         [64]uint8
 	Len             int32
-	Pid             struct {
-		_       structs.HostLayout
-		HostPid uint32
-		UserPid uint32
-		Ns      uint32
-	}
-	NewConnId uint64
-	Tp        BpfTpInfoT
+	StreamId        uint32
+	HpackFlags      uint8
+	Pad1            [3]uint8
+	Pid             BpfPidInfo
+	NewConnId       uint64
+	Tp              BpfTpInfoT
 }
 
 type BpfHttpConnectionMetadataT struct {
-	_   structs.HostLayout
-	Pid struct {
-		_       structs.HostLayout
-		HostPid uint32
-		UserPid uint32
-		Ns      uint32
-	}
+	_    structs.HostLayout
+	Pid  BpfPidInfo
 	Type uint8
 	Pad  [3]uint8
 }
 
 type BpfHttpInfoT struct {
-	_               structs.HostLayout
-	Flags           uint8
-	Type            uint8
-	Ssl             uint8
-	Delayed         uint8
-	ConnInfo        BpfConnectionInfoT
-	StartMonotimeNs uint64
-	EndMonotimeNs   uint64
-	ReqMonotimeNs   uint64
-	ExtraId         uint64
-	Tp              BpfTpInfoT
-	Pid             struct {
-		_       structs.HostLayout
-		HostPid uint32
-		UserPid uint32
-		Ns      uint32
-	}
-	Len             uint32
-	RespLen         uint32
-	TaskTid         uint32
-	LbReqBytes      uint32
-	LbResBytes      uint32
-	Status          uint16
-	Buf             [256]uint8
-	HasLargeBuffers uint8
-	Direction       uint8
-	Submitted       uint8
-	EventSource     uint8
-	Pad             [2]uint8
+	_                      structs.HostLayout
+	Flags                  uint8
+	Type                   uint8
+	Ssl                    uint8
+	Delayed                uint8
+	ConnInfo               BpfConnectionInfoT
+	StartMonotimeNs        uint64
+	EndMonotimeNs          uint64
+	ReqMonotimeNs          uint64
+	ExtraId                uint64
+	ResponseBytesAtRequest uint64
+	Tp                     BpfTpInfoT
+	Pid                    BpfPidInfo
+	Len                    uint32
+	RespLen                uint32
+	TaskTid                uint32
+	LbReqBytes             uint32
+	LbResBytes             uint32
+	Status                 uint16
+	Buf                    [256]uint8
+	HasLargeBuffers        uint8
+	Direction              uint8
+	Submitted              uint8
+	ParentStatus           uint8
+	EventSource            uint8
+	ResponseObservation    uint8
+}
+
+type BpfJvmGcDurationEvent struct {
+	_             structs.HostLayout
+	Type          uint8
+	Pad           [7]uint8
+	Timestamp     uint64
+	GlobalPid     uint32
+	GlobalTid     uint32
+	NsPid         uint32
+	NsTid         uint32
+	PidNsId       uint32
+	Pad2          uint32
+	DurationNs    uint64
+	CollectorName [64]uint8
+	Action        [64]uint8
 }
 
 type BpfJvmMemPoolGcEvent struct {
@@ -229,6 +279,27 @@ type BpfJvmMemPoolKey struct {
 	GcWhenType uint32
 	Manager    [64]uint8
 	Pool       [64]uint8
+}
+
+type BpfJvmRuntimeMetricsEvent struct {
+	_                        structs.HostLayout
+	Type                     uint8
+	Pad                      [7]uint8
+	Timestamp                uint64
+	GlobalPid                uint32
+	GlobalTid                uint32
+	NsPid                    uint32
+	NsTid                    uint32
+	PidNsId                  uint32
+	Pad2                     uint32
+	LoadedClassCount         uint64
+	TotalLoadedClassCount    uint64
+	UnloadedClassCount       uint64
+	ThreadCount              uint64
+	DaemonThreadCount        uint64
+	AvailableProcessorCount  uint64
+	ProcessCpuTimeNs         uint64
+	RecentCpuUtilizationBits uint64
 }
 
 type BpfJvmSampleValue struct {
@@ -268,6 +339,29 @@ type BpfMysqlStateData struct {
 	SequenceId    uint8
 }
 
+type BpfNodejsEventloopEvent struct {
+	_             structs.HostLayout
+	Type          uint8
+	Pad           [7]uint8
+	Timestamp     uint64
+	GlobalPid     uint32
+	GlobalTid     uint32
+	NsPid         uint32
+	NsTid         uint32
+	PidNsId       uint32
+	Pad2          uint32
+	EluIdleNs     uint64
+	EluActiveNs   uint64
+	DelayMinNs    uint64
+	DelayMaxNs    uint64
+	DelayMeanNs   uint64
+	DelayStddevNs uint64
+	DelayP50Ns    uint64
+	DelayP90Ns    uint64
+	DelayP99Ns    uint64
+	DelayCount    uint64
+}
+
 type BpfObiCtxInfoT struct {
 	_       structs.HostLayout
 	TraceId [16]uint8
@@ -299,7 +393,7 @@ type BpfObiUsdtSpec struct {
 
 type BpfOffTableT struct {
 	_     structs.HostLayout
-	Table [98]uint64
+	Table [136]uint64
 }
 
 type BpfPartialConnectionInfoT struct {
@@ -316,6 +410,13 @@ type BpfPidConnectionInfoT struct {
 	Pid  uint32
 }
 
+type BpfPidInfo struct {
+	_       structs.HostLayout
+	HostPid uint32
+	UserPid uint32
+	Ns      uint32
+}
+
 type BpfPidKeyT struct {
 	_   structs.HostLayout
 	Tid uint32
@@ -323,17 +424,27 @@ type BpfPidKeyT struct {
 	Ns  uint32
 }
 
+type BpfPidPtrKeyT struct {
+	_   structs.HostLayout
+	Ptr uint64
+	Pid uint32
+	Pad uint32
+}
+
 type BpfProtocolType uint8
 
 const (
-	BpfProtocolTypeK_protocolTypeUnknown  BpfProtocolType = 0
-	BpfProtocolTypeK_protocolTypeMysql    BpfProtocolType = 1
-	BpfProtocolTypeK_protocolTypePostgres BpfProtocolType = 2
-	BpfProtocolTypeK_protocolTypeHttp     BpfProtocolType = 3
-	BpfProtocolTypeK_protocolTypeKafka    BpfProtocolType = 4
-	BpfProtocolTypeK_protocolTypeMqtt     BpfProtocolType = 5
-	BpfProtocolTypeK_protocolTypeMssql    BpfProtocolType = 6
-	BpfProtocolTypeK_protocolTypeSunrpc   BpfProtocolType = 7
+	BpfProtocolTypeK_protocolTypeUnknown   BpfProtocolType = 0
+	BpfProtocolTypeK_protocolTypeMysql     BpfProtocolType = 1
+	BpfProtocolTypeK_protocolTypePostgres  BpfProtocolType = 2
+	BpfProtocolTypeK_protocolTypeHttp      BpfProtocolType = 3
+	BpfProtocolTypeK_protocolTypeKafka     BpfProtocolType = 4
+	BpfProtocolTypeK_protocolTypeMqtt      BpfProtocolType = 5
+	BpfProtocolTypeK_protocolTypeMssql     BpfProtocolType = 6
+	BpfProtocolTypeK_protocolTypeSunrpc    BpfProtocolType = 7
+	BpfProtocolTypeK_protocolTypeNats      BpfProtocolType = 8
+	BpfProtocolTypeK_protocolTypeAmqp      BpfProtocolType = 9
+	BpfProtocolTypeK_protocolTypeAerospike BpfProtocolType = 10
 )
 
 type BpfPumaTaskIdT struct {
@@ -343,29 +454,66 @@ type BpfPumaTaskIdT struct {
 	Pad1 uint32
 }
 
+type BpfPythonAddrKeyT struct {
+	_    structs.HostLayout
+	Pid  uint64
+	Addr uint64
+}
+
 type BpfPythonContextTaskT struct {
-	_       structs.HostLayout
-	Task    uint64
-	Version uint64
+	_    structs.HostLayout
+	Task struct {
+		_          structs.HostLayout
+		Addr       uint64
+		Generation uint64
+	}
+	Vars uint64
+}
+
+type BpfPythonRuntimeMetricSnapshot struct {
+	_           structs.HostLayout
+	Generation  uint64
+	Generations [3]struct {
+		_             structs.HostLayout
+		Collections   uint64
+		Collected     uint64
+		Uncollectable uint64
+	}
+}
+
+type BpfPythonRuntimeMetricTarget struct {
+	_                       structs.HostLayout
+	RuntimeAddr             uint64
+	Generation              uint64
+	RuntimeFinalizing       uint64
+	RuntimeInterpretersMain uint64
+	InterpreterGc           uint64
+	GcGenerationStats       uint64
 }
 
 type BpfPythonTaskStateT struct {
-	_       structs.HostLayout
-	Parent  uint64
-	Version uint64
-	Conn    BpfConnectionInfoPartT
+	_      structs.HostLayout
+	Parent struct {
+		_          structs.HostLayout
+		Addr       uint64
+		Generation uint64
+	}
+	Generation uint64
+	Conn       BpfConnectionInfoPartT
 }
 
 type BpfPythonThreadStateT struct {
-	_              structs.HostLayout
-	CurrentTask    uint64
-	CurrentContext uint64
-	InflightTask   uint64
+	_               structs.HostLayout
+	CurrentTask     uint64
+	CurrentContext  uint64
+	InflightTask    uint64
+	StartMonotimeNs uint64
 }
 
 type BpfRecvArgsT struct {
 	_        structs.HostLayout
 	SockPtr  uint64
+	MsgPtr   uint64
 	IovecCtx [40]uint8
 }
 
@@ -414,6 +562,12 @@ type BpfSslArgsT struct {
 	Flags  uint64
 }
 
+type BpfSslBiosT struct {
+	_    structs.HostLayout
+	Rbio uint64
+	Wbio uint64
+}
+
 type BpfSslPidConnectionInfoT struct {
 	_         structs.HostLayout
 	P_conn    BpfPidConnectionInfoT
@@ -429,7 +583,8 @@ type BpfTcpReqT struct {
 	HasLargeBuffers uint8
 	ProtocolType    BpfProtocolType
 	IsServer        bool
-	Pad1            [2]uint8
+	ParentStatus    uint8
+	Pad1            [1]uint8
 	ConnInfo        BpfConnectionInfoT
 	Len             uint32
 	StartMonotimeNs uint64
@@ -445,23 +600,33 @@ type BpfTcpReqT struct {
 	Pad2            [3]uint8
 	Buf             [256]uint8
 	Rbuf            [128]uint8
-	Pid             struct {
-		_       structs.HostLayout
-		HostPid uint32
-		UserPid uint32
-		Ns      uint32
-	}
-	Tp BpfTpInfoT
+	Pid             BpfPidInfo
+	Tp              BpfTpInfoT
+}
+
+type BpfTlsPrefixKeyT struct {
+	_     structs.HostLayout
+	Bytes [32]uint8
+	Len   uint8
+	Pad   [7]uint8
+}
+
+type BpfTlsPrefixValT struct {
+	_    structs.HostLayout
+	Ssl  uint64
+	TsNs uint64
+	Pid  uint32
+	Pad  uint32
 }
 
 type BpfTpInfoPidT struct {
-	_       structs.HostLayout
-	Tp      BpfTpInfoT
-	Pid     uint32
-	Valid   uint8
-	Written uint8
-	ReqType uint8
-	Pad     [1]uint8
+	_            structs.HostLayout
+	Tp           BpfTpInfoT
+	Pid          uint32
+	Valid        uint8
+	Written      uint8
+	ReqType      uint8
+	ResponseSent uint8
 }
 
 type BpfTpInfoT struct {
@@ -494,6 +659,22 @@ type BpfTrackedConnectionT struct {
 	Pad       [7]uint8
 }
 
+type BpfUnconnDnsPendingT struct {
+	_      structs.HostLayout
+	Sk     uint64
+	S_addr [16]uint8
+	S_port uint16
+	Pad    [6]uint8
+}
+
+type BpfUnconnDnsSockT struct {
+	_           structs.HostLayout
+	LastQueryNs uint64
+	S_addr      [16]uint8
+	S_port      uint16
+	Pad         [6]uint8
+}
+
 // Names of all BPF objects in the ELF.
 //
 // Used for safe lookups in a Collection or CollectionSpec.
@@ -507,7 +688,9 @@ const (
 	BpfMapActiveSslReadArgs                                   = "active_ssl_read_args"
 	BpfMapActiveSslWriteArgs                                  = "active_ssl_write_args"
 	BpfMapActiveUnixSocks                                     = "active_unix_socks"
+	BpfMapAerospikeState                                      = "aerospike_state"
 	BpfMapBackupBufferStorage                                 = "backup_buffer_storage"
+	BpfMapBioToSsl                                            = "bio_to_ssl"
 	BpfMapCloneMap                                            = "clone_map"
 	BpfMapConnectionMetaMem                                   = "connection_meta_mem"
 	BpfMapConnectionTracker                                   = "connection_tracker"
@@ -520,6 +703,11 @@ const (
 	BpfMapGoOffsetsMap                                        = "go_offsets_map"
 	BpfMapGoTraceMap                                          = "go_trace_map"
 	BpfMapGrpcFramesCtxMem                                    = "grpc_frames_ctx_mem"
+	BpfMapH2CutFrameStorage                                   = "h2_cut_frame_storage"
+	BpfMapH2CutFrames                                         = "h2_cut_frames"
+	BpfMapH2JoinedStorage                                     = "h2_joined_storage"
+	BpfMapH2TpHuffOutStorage                                  = "h2_tp_huff_out_storage"
+	BpfMapH2TpHuffWinStorage                                  = "h2_tp_huff_win_storage"
 	BpfMapHandledByGoConn                                     = "handled_by_go_conn"
 	BpfMapHttp2InfoStorage                                    = "http2_info_storage"
 	BpfMapHttpInfoMem                                         = "http_info_mem"
@@ -530,6 +718,7 @@ const (
 	BpfMapJavaVtThreads                                       = "java_vt_threads"
 	BpfMapJumpTable                                           = "jump_table"
 	BpfMapJumpTableSkb                                        = "jump_table_skb"
+	BpfMapJumpTableUm                                         = "jump_table_um"
 	BpfMapJvmMemPoolSamples                                   = "jvm_mem_pool_samples"
 	BpfMapKafkaOngoingRequests                                = "kafka_ongoing_requests"
 	BpfMapKafkaState                                          = "kafka_state"
@@ -540,6 +729,8 @@ const (
 	BpfMapMysqlState                                          = "mysql_state"
 	BpfMapNginxUpstream                                       = "nginx_upstream"
 	BpfMapNodejsFdMap                                         = "nodejs_fd_map"
+	BpfMapNodejsRtPayloadStorage                              = "nodejs_rt_payload_storage"
+	BpfMapNodejsV8PayloadStorage                              = "nodejs_v8_payload_storage"
 	BpfMapObiUsdtIpToSpecId                                   = "obi_usdt_ip_to_spec_id"
 	BpfMapObiUsdtSpecs                                        = "obi_usdt_specs"
 	BpfMapOngoingClientConnections                            = "ongoing_client_connections"
@@ -560,6 +751,9 @@ const (
 	BpfMapPumaTaskConnections                                 = "puma_task_connections"
 	BpfMapPumaWorkerTasks                                     = "puma_worker_tasks"
 	BpfMapPythonContextTask                                   = "python_context_task"
+	BpfMapPythonRuntimeMetricSnapshots                        = "python_runtime_metric_snapshots"
+	BpfMapPythonRuntimeMetricTargets                          = "python_runtime_metric_targets"
+	BpfMapPythonTaskGeneration                                = "python_task_generation"
 	BpfMapPythonTaskState                                     = "python_task_state"
 	BpfMapPythonThreadState                                   = "python_thread_state"
 	BpfMapServerTraces                                        = "server_traces"
@@ -568,16 +762,21 @@ const (
 	BpfMapSockJumpTable                                       = "sock_jump_table"
 	BpfMapSockPids                                            = "sock_pids"
 	BpfMapSockTailcallCtxStorage                              = "sock_tailcall_ctx_storage"
+	BpfMapSslToBios                                           = "ssl_to_bios"
 	BpfMapSslToConn                                           = "ssl_to_conn"
 	BpfMapSslToPidTid                                         = "ssl_to_pid_tid"
 	BpfMapTcpConnectionMap                                    = "tcp_connection_map"
 	BpfMapTcpLargeBuffersStorage                              = "tcp_large_buffers_storage"
 	BpfMapTcpReqMem                                           = "tcp_req_mem"
+	BpfMapTlsPrefixStorage                                    = "tls_prefix_storage"
+	BpfMapTlsPrefixToSsl                                      = "tls_prefix_to_ssl"
 	BpfMapTpCharBufStorage                                    = "tp_char_buf_storage"
 	BpfMapTpInfoBackupStorage                                 = "tp_info_backup_storage"
 	BpfMapTpInfoStorage                                       = "tp_info_storage"
 	BpfMapTraceMap                                            = "trace_map"
 	BpfMapTracesCtxV1                                         = "traces_ctx_v1"
+	BpfMapUnconnDnsPending                                    = "unconn_dns_pending"
+	BpfMapUnconnDnsSocks                                      = "unconn_dns_socks"
 	BpfMapUnreadableBufferPorts                               = "unreadable_buffer_ports"
 	BpfMapUpstreamInitArgs                                    = "upstream_init_args"
 	BpfMapValidPids                                           = "valid_pids"
@@ -600,6 +799,7 @@ const (
 	BpfProgObiKprobeTcpRateCheckAppLimited                    = "obi_kprobe_tcp_rate_check_app_limited"
 	BpfProgObiKprobeTcpRecvmsg                                = "obi_kprobe_tcp_recvmsg"
 	BpfProgObiKprobeTcpSendmsg                                = "obi_kprobe_tcp_sendmsg"
+	BpfProgObiKprobeUdpDestroySock                            = "obi_kprobe_udp_destroy_sock"
 	BpfProgObiKprobeUdpSendmsg                                = "obi_kprobe_udp_sendmsg"
 	BpfProgObiKprobeUnixStreamRecvmsg                         = "obi_kprobe_unix_stream_recvmsg"
 	BpfProgObiKprobeUnixStreamSendmsg                         = "obi_kprobe_unix_stream_sendmsg"
@@ -609,6 +809,7 @@ const (
 	BpfProgObiKretprobeSysConnect                             = "obi_kretprobe_sys_connect"
 	BpfProgObiKretprobeTcpRecvmsg                             = "obi_kretprobe_tcp_recvmsg"
 	BpfProgObiKretprobeTcpSendmsg                             = "obi_kretprobe_tcp_sendmsg"
+	BpfProgObiKretprobeUdpSendmsg                             = "obi_kretprobe_udp_sendmsg"
 	BpfProgObiKretprobeUnixStreamRecvmsg                      = "obi_kretprobe_unix_stream_recvmsg"
 	BpfProgObiKretprobeUnixStreamSendmsg                      = "obi_kretprobe_unix_stream_sendmsg"
 	BpfProgObiLargeBufEmitContinue                            = "obi_large_buf_emit_continue"
@@ -620,18 +821,28 @@ const (
 	BpfProgObiProtocolHttp2GrpcHandleEndFrame                 = "obi_protocol_http2_grpc_handle_end_frame"
 	BpfProgObiProtocolHttp2GrpcHandleStartFrame               = "obi_protocol_http2_grpc_handle_start_frame"
 	BpfProgObiProtocolHttp2GrpcHandleStartFrameServer         = "obi_protocol_http2_grpc_handle_start_frame_server"
+	BpfProgObiProtocolHttp2GrpcHandleStartFrameServerCommit   = "obi_protocol_http2_grpc_handle_start_frame_server_commit"
 	BpfProgObiProtocolHttp2GrpcHandleStartFrameServerFinalize = "obi_protocol_http2_grpc_handle_start_frame_server_finalize"
+	BpfProgObiProtocolHttp2GrpcHandleStartFrameServerHuffman  = "obi_protocol_http2_grpc_handle_start_frame_server_huffman"
+	BpfProgObiProtocolHttp2GrpcHandleStartFrameServerHuffscan = "obi_protocol_http2_grpc_handle_start_frame_server_huffscan"
 	BpfProgObiProtocolHttpLegacy                              = "obi_protocol_http_legacy"
 	BpfProgObiProtocolTcp                                     = "obi_protocol_tcp"
 	BpfProgObiRbAryShift                                      = "obi_rb_ary_shift"
+	BpfProgObiRbObjAllocRet                                   = "obi_rb_obj_alloc_ret"
 	BpfProgObiRbObjCallInitKw                                 = "obi_rb_obj_call_init_kw"
 	BpfProgObiSocketHttpDnsFilter                             = "obi_socket__http_dns_filter"
 	BpfProgObiSocketHttpFilter                                = "obi_socket__http_filter"
 	BpfProgObiSocketFltBuf                                    = "obi_socket_flt_buf"
+	BpfProgObiUprobeBioWrite                                  = "obi_uprobe_bio_write"
+	BpfProgObiUprobeContextDealloc                            = "obi_uprobe_context_dealloc"
 	BpfProgObiUprobeContextRun                                = "obi_uprobe_context_run"
 	BpfProgObiUprobeCopyContext                               = "obi_uprobe_copy_context"
+	BpfProgObiUprobeNewContext                                = "obi_uprobe_new_context"
+	BpfProgObiUprobePythonGcDone                              = "obi_uprobe_python_gc_done"
+	BpfProgObiUprobeSslFree                                   = "obi_uprobe_ssl_free"
 	BpfProgObiUprobeSslRead                                   = "obi_uprobe_ssl_read"
 	BpfProgObiUprobeSslReadEx                                 = "obi_uprobe_ssl_read_ex"
+	BpfProgObiUprobeSslSetBio                                 = "obi_uprobe_ssl_set_bio"
 	BpfProgObiUprobeSslShutdown                               = "obi_uprobe_ssl_shutdown"
 	BpfProgObiUprobeSslWrite                                  = "obi_uprobe_ssl_write"
 	BpfProgObiUprobeSslWriteEx                                = "obi_uprobe_ssl_write_ex"
@@ -661,14 +872,21 @@ const (
 	BpfVarTP_TID_PREFIX                                       = "TP_TID_PREFIX"
 	BpfVarTP_TID_PREFIX_SIZE                                  = "TP_TID_PREFIX_SIZE"
 	BpfVarPnUnused                                            = "__pn_unused"
+	BpfVarJvmGcDurationEvent                                  = "_jvm_gc_duration_event"
 	BpfVarJvmMemPoolGcEvent                                   = "_jvm_mem_pool_gc_event"
+	BpfVarJvmRuntimeMetricsEvent                              = "_jvm_runtime_metrics_event"
+	BpfVarNodejsEventloopEvent                                = "_nodejs_eventloop_event"
+	BpfVarAerospikeMaxCapturedBytes                           = "aerospike_max_captured_bytes"
 	BpfVarCaptureHeaderBuffer                                 = "capture_header_buffer"
 	BpfVarDisableBlackBoxCp                                   = "disable_black_box_cp"
 	BpfVarFilterPids                                          = "filter_pids"
 	BpfVarG_bpfDebug                                          = "g_bpf_debug"
 	BpfVarG_bpfHeaderPropagation                              = "g_bpf_header_propagation"
 	BpfVarG_bpfLoopEnabled                                    = "g_bpf_loop_enabled"
+	BpfVarG_bpfProbeWriteUserEnabled                          = "g_bpf_probe_write_user_enabled"
 	BpfVarG_bpfTraceparentEnabled                             = "g_bpf_traceparent_enabled"
+	BpfVarG_goH2WriteFailStep                                 = "g_go_h2_write_fail_step"
+	BpfVarG_tracesCtxV1Enabled                                = "g_traces_ctx_v1_enabled"
 	BpfVarHighRequestVolume                                   = "high_request_volume"
 	BpfVarHttpMaxCapturedBytes                                = "http_max_captured_bytes"
 	BpfVarIp4ip6Prefix                                        = "ip4ip6_prefix"
@@ -683,6 +901,7 @@ const (
 	BpfVarNgxHttpRequestS_upstream                            = "ngx_http_request_s_upstream"
 	BpfVarNgxHttpRevS_conn                                    = "ngx_http_rev_s_conn"
 	BpfVarNgxHttpUpstreamS_conn                               = "ngx_http_upstream_s_conn"
+	BpfVarNodejsRuntimeMetricsEnabled                         = "nodejs_runtime_metrics_enabled"
 	BpfVarPostgresMaxCapturedBytes                            = "postgres_max_captured_bytes"
 	BpfVarTcpMaxCapturedBytes                                 = "tcp_max_captured_bytes"
 	BpfVarUnused                                              = "unused"
@@ -751,6 +970,7 @@ type BpfProgramSpecs struct {
 	ObiKprobeTcpRateCheckAppLimited                    *ebpf.ProgramSpec `ebpf:"obi_kprobe_tcp_rate_check_app_limited"`
 	ObiKprobeTcpRecvmsg                                *ebpf.ProgramSpec `ebpf:"obi_kprobe_tcp_recvmsg"`
 	ObiKprobeTcpSendmsg                                *ebpf.ProgramSpec `ebpf:"obi_kprobe_tcp_sendmsg"`
+	ObiKprobeUdpDestroySock                            *ebpf.ProgramSpec `ebpf:"obi_kprobe_udp_destroy_sock"`
 	ObiKprobeUdpSendmsg                                *ebpf.ProgramSpec `ebpf:"obi_kprobe_udp_sendmsg"`
 	ObiKprobeUnixStreamRecvmsg                         *ebpf.ProgramSpec `ebpf:"obi_kprobe_unix_stream_recvmsg"`
 	ObiKprobeUnixStreamSendmsg                         *ebpf.ProgramSpec `ebpf:"obi_kprobe_unix_stream_sendmsg"`
@@ -760,6 +980,7 @@ type BpfProgramSpecs struct {
 	ObiKretprobeSysConnect                             *ebpf.ProgramSpec `ebpf:"obi_kretprobe_sys_connect"`
 	ObiKretprobeTcpRecvmsg                             *ebpf.ProgramSpec `ebpf:"obi_kretprobe_tcp_recvmsg"`
 	ObiKretprobeTcpSendmsg                             *ebpf.ProgramSpec `ebpf:"obi_kretprobe_tcp_sendmsg"`
+	ObiKretprobeUdpSendmsg                             *ebpf.ProgramSpec `ebpf:"obi_kretprobe_udp_sendmsg"`
 	ObiKretprobeUnixStreamRecvmsg                      *ebpf.ProgramSpec `ebpf:"obi_kretprobe_unix_stream_recvmsg"`
 	ObiKretprobeUnixStreamSendmsg                      *ebpf.ProgramSpec `ebpf:"obi_kretprobe_unix_stream_sendmsg"`
 	ObiLargeBufEmitContinue                            *ebpf.ProgramSpec `ebpf:"obi_large_buf_emit_continue"`
@@ -771,18 +992,28 @@ type BpfProgramSpecs struct {
 	ObiProtocolHttp2GrpcHandleEndFrame                 *ebpf.ProgramSpec `ebpf:"obi_protocol_http2_grpc_handle_end_frame"`
 	ObiProtocolHttp2GrpcHandleStartFrame               *ebpf.ProgramSpec `ebpf:"obi_protocol_http2_grpc_handle_start_frame"`
 	ObiProtocolHttp2GrpcHandleStartFrameServer         *ebpf.ProgramSpec `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server"`
+	ObiProtocolHttp2GrpcHandleStartFrameServerCommit   *ebpf.ProgramSpec `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server_commit"`
 	ObiProtocolHttp2GrpcHandleStartFrameServerFinalize *ebpf.ProgramSpec `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server_finalize"`
+	ObiProtocolHttp2GrpcHandleStartFrameServerHuffman  *ebpf.ProgramSpec `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server_huffman"`
+	ObiProtocolHttp2GrpcHandleStartFrameServerHuffscan *ebpf.ProgramSpec `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server_huffscan"`
 	ObiProtocolHttpLegacy                              *ebpf.ProgramSpec `ebpf:"obi_protocol_http_legacy"`
 	ObiProtocolTcp                                     *ebpf.ProgramSpec `ebpf:"obi_protocol_tcp"`
 	ObiRbAryShift                                      *ebpf.ProgramSpec `ebpf:"obi_rb_ary_shift"`
+	ObiRbObjAllocRet                                   *ebpf.ProgramSpec `ebpf:"obi_rb_obj_alloc_ret"`
 	ObiRbObjCallInitKw                                 *ebpf.ProgramSpec `ebpf:"obi_rb_obj_call_init_kw"`
 	ObiSocketHttpDnsFilter                             *ebpf.ProgramSpec `ebpf:"obi_socket__http_dns_filter"`
 	ObiSocketHttpFilter                                *ebpf.ProgramSpec `ebpf:"obi_socket__http_filter"`
 	ObiSocketFltBuf                                    *ebpf.ProgramSpec `ebpf:"obi_socket_flt_buf"`
+	ObiUprobeBioWrite                                  *ebpf.ProgramSpec `ebpf:"obi_uprobe_bio_write"`
+	ObiUprobeContextDealloc                            *ebpf.ProgramSpec `ebpf:"obi_uprobe_context_dealloc"`
 	ObiUprobeContextRun                                *ebpf.ProgramSpec `ebpf:"obi_uprobe_context_run"`
 	ObiUprobeCopyContext                               *ebpf.ProgramSpec `ebpf:"obi_uprobe_copy_context"`
+	ObiUprobeNewContext                                *ebpf.ProgramSpec `ebpf:"obi_uprobe_new_context"`
+	ObiUprobePythonGcDone                              *ebpf.ProgramSpec `ebpf:"obi_uprobe_python_gc_done"`
+	ObiUprobeSslFree                                   *ebpf.ProgramSpec `ebpf:"obi_uprobe_ssl_free"`
 	ObiUprobeSslRead                                   *ebpf.ProgramSpec `ebpf:"obi_uprobe_ssl_read"`
 	ObiUprobeSslReadEx                                 *ebpf.ProgramSpec `ebpf:"obi_uprobe_ssl_read_ex"`
+	ObiUprobeSslSetBio                                 *ebpf.ProgramSpec `ebpf:"obi_uprobe_ssl_set_bio"`
 	ObiUprobeSslShutdown                               *ebpf.ProgramSpec `ebpf:"obi_uprobe_ssl_shutdown"`
 	ObiUprobeSslWrite                                  *ebpf.ProgramSpec `ebpf:"obi_uprobe_ssl_write"`
 	ObiUprobeSslWriteEx                                *ebpf.ProgramSpec `ebpf:"obi_uprobe_ssl_write_ex"`
@@ -807,133 +1038,159 @@ type BpfProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfMapSpecs struct {
-	ActiveAcceptArgs           *ebpf.MapSpec `ebpf:"active_accept_args"`
-	ActiveConnectArgs          *ebpf.MapSpec `ebpf:"active_connect_args"`
-	ActiveRecvArgs             *ebpf.MapSpec `ebpf:"active_recv_args"`
-	ActiveSendArgs             *ebpf.MapSpec `ebpf:"active_send_args"`
-	ActiveSendSockArgs         *ebpf.MapSpec `ebpf:"active_send_sock_args"`
-	ActiveSslConnections       *ebpf.MapSpec `ebpf:"active_ssl_connections"`
-	ActiveSslReadArgs          *ebpf.MapSpec `ebpf:"active_ssl_read_args"`
-	ActiveSslWriteArgs         *ebpf.MapSpec `ebpf:"active_ssl_write_args"`
-	ActiveUnixSocks            *ebpf.MapSpec `ebpf:"active_unix_socks"`
-	BackupBufferStorage        *ebpf.MapSpec `ebpf:"backup_buffer_storage"`
-	CloneMap                   *ebpf.MapSpec `ebpf:"clone_map"`
-	ConnectionMetaMem          *ebpf.MapSpec `ebpf:"connection_meta_mem"`
-	ConnectionTracker          *ebpf.MapSpec `ebpf:"connection_tracker"`
-	CpSupportConnectInfo       *ebpf.MapSpec `ebpf:"cp_support_connect_info"`
-	DebugEvents                *ebpf.MapSpec `ebpf:"debug_events"`
-	Events                     *ebpf.MapSpec `ebpf:"events"`
-	FdMap                      *ebpf.MapSpec `ebpf:"fd_map"`
-	FdToConnection             *ebpf.MapSpec `ebpf:"fd_to_connection"`
-	FilterPorts                *ebpf.MapSpec `ebpf:"filter_ports"`
-	GoOffsetsMap               *ebpf.MapSpec `ebpf:"go_offsets_map"`
-	GoTraceMap                 *ebpf.MapSpec `ebpf:"go_trace_map"`
-	GrpcFramesCtxMem           *ebpf.MapSpec `ebpf:"grpc_frames_ctx_mem"`
-	HandledByGoConn            *ebpf.MapSpec `ebpf:"handled_by_go_conn"`
-	Http2InfoStorage           *ebpf.MapSpec `ebpf:"http2_info_storage"`
-	HttpInfoMem                *ebpf.MapSpec `ebpf:"http_info_mem"`
-	HttpPreviousTraceIdStorage *ebpf.MapSpec `ebpf:"http_previous_trace_id_storage"`
-	IncomingTraceMap           *ebpf.MapSpec `ebpf:"incoming_trace_map"`
-	IovecMem                   *ebpf.MapSpec `ebpf:"iovec_mem"`
-	JavaTasks                  *ebpf.MapSpec `ebpf:"java_tasks"`
-	JavaVtThreads              *ebpf.MapSpec `ebpf:"java_vt_threads"`
-	JumpTable                  *ebpf.MapSpec `ebpf:"jump_table"`
-	JumpTableSkb               *ebpf.MapSpec `ebpf:"jump_table_skb"`
-	JvmMemPoolSamples          *ebpf.MapSpec `ebpf:"jvm_mem_pool_samples"`
-	KafkaOngoingRequests       *ebpf.MapSpec `ebpf:"kafka_ongoing_requests"`
-	KafkaState                 *ebpf.MapSpec `ebpf:"kafka_state"`
-	LargeBufEmitStateStorage   *ebpf.MapSpec `ebpf:"large_buf_emit_state_storage"`
-	ListeningPorts             *ebpf.MapSpec `ebpf:"listening_ports"`
-	MsgBufferMem               *ebpf.MapSpec `ebpf:"msg_buffer_mem"`
-	MsgBuffers                 *ebpf.MapSpec `ebpf:"msg_buffers"`
-	MysqlState                 *ebpf.MapSpec `ebpf:"mysql_state"`
-	NginxUpstream              *ebpf.MapSpec `ebpf:"nginx_upstream"`
-	NodejsFdMap                *ebpf.MapSpec `ebpf:"nodejs_fd_map"`
-	ObiUsdtIpToSpecId          *ebpf.MapSpec `ebpf:"obi_usdt_ip_to_spec_id"`
-	ObiUsdtSpecs               *ebpf.MapSpec `ebpf:"obi_usdt_specs"`
-	OngoingClientConnections   *ebpf.MapSpec `ebpf:"ongoing_client_connections"`
-	OngoingGoroutines          *ebpf.MapSpec `ebpf:"ongoing_goroutines"`
-	OngoingGrpcOperateHeaders  *ebpf.MapSpec `ebpf:"ongoing_grpc_operate_headers"`
-	OngoingGrpcTransports      *ebpf.MapSpec `ebpf:"ongoing_grpc_transports"`
-	OngoingHttp                *ebpf.MapSpec `ebpf:"ongoing_http"`
-	OngoingHttp2Connections    *ebpf.MapSpec `ebpf:"ongoing_http2_connections"`
-	OngoingHttp2Grpc           *ebpf.MapSpec `ebpf:"ongoing_http2_grpc"`
-	OngoingServerConnections   *ebpf.MapSpec `ebpf:"ongoing_server_connections"`
-	OngoingSqlQueries          *ebpf.MapSpec `ebpf:"ongoing_sql_queries"`
-	OngoingTcpReq              *ebpf.MapSpec `ebpf:"ongoing_tcp_req"`
-	OutgoingTraceMap           *ebpf.MapSpec `ebpf:"outgoing_trace_map"`
-	PidCache                   *ebpf.MapSpec `ebpf:"pid_cache"`
-	PidTidToConn               *ebpf.MapSpec `ebpf:"pid_tid_to_conn"`
-	ProtocolArgsMem            *ebpf.MapSpec `ebpf:"protocol_args_mem"`
-	ProtocolCache              *ebpf.MapSpec `ebpf:"protocol_cache"`
-	PumaTaskConnections        *ebpf.MapSpec `ebpf:"puma_task_connections"`
-	PumaWorkerTasks            *ebpf.MapSpec `ebpf:"puma_worker_tasks"`
-	PythonContextTask          *ebpf.MapSpec `ebpf:"python_context_task"`
-	PythonTaskState            *ebpf.MapSpec `ebpf:"python_task_state"`
-	PythonThreadState          *ebpf.MapSpec `ebpf:"python_thread_state"`
-	ServerTraces               *ebpf.MapSpec `ebpf:"server_traces"`
-	ServerTracesAux            *ebpf.MapSpec `ebpf:"server_traces_aux"`
-	SockFilterBuffers          *ebpf.MapSpec `ebpf:"sock_filter_buffers"`
-	SockJumpTable              *ebpf.MapSpec `ebpf:"sock_jump_table"`
-	SockPids                   *ebpf.MapSpec `ebpf:"sock_pids"`
-	SockTailcallCtxStorage     *ebpf.MapSpec `ebpf:"sock_tailcall_ctx_storage"`
-	SslToConn                  *ebpf.MapSpec `ebpf:"ssl_to_conn"`
-	SslToPidTid                *ebpf.MapSpec `ebpf:"ssl_to_pid_tid"`
-	TcpConnectionMap           *ebpf.MapSpec `ebpf:"tcp_connection_map"`
-	TcpLargeBuffersStorage     *ebpf.MapSpec `ebpf:"tcp_large_buffers_storage"`
-	TcpReqMem                  *ebpf.MapSpec `ebpf:"tcp_req_mem"`
-	TpCharBufStorage           *ebpf.MapSpec `ebpf:"tp_char_buf_storage"`
-	TpInfoBackupStorage        *ebpf.MapSpec `ebpf:"tp_info_backup_storage"`
-	TpInfoStorage              *ebpf.MapSpec `ebpf:"tp_info_storage"`
-	TraceMap                   *ebpf.MapSpec `ebpf:"trace_map"`
-	TracesCtxV1                *ebpf.MapSpec `ebpf:"traces_ctx_v1"`
-	UnreadableBufferPorts      *ebpf.MapSpec `ebpf:"unreadable_buffer_ports"`
-	UpstreamInitArgs           *ebpf.MapSpec `ebpf:"upstream_init_args"`
-	ValidPids                  *ebpf.MapSpec `ebpf:"valid_pids"`
+	ActiveAcceptArgs             *ebpf.MapSpec `ebpf:"active_accept_args"`
+	ActiveConnectArgs            *ebpf.MapSpec `ebpf:"active_connect_args"`
+	ActiveRecvArgs               *ebpf.MapSpec `ebpf:"active_recv_args"`
+	ActiveSendArgs               *ebpf.MapSpec `ebpf:"active_send_args"`
+	ActiveSendSockArgs           *ebpf.MapSpec `ebpf:"active_send_sock_args"`
+	ActiveSslConnections         *ebpf.MapSpec `ebpf:"active_ssl_connections"`
+	ActiveSslReadArgs            *ebpf.MapSpec `ebpf:"active_ssl_read_args"`
+	ActiveSslWriteArgs           *ebpf.MapSpec `ebpf:"active_ssl_write_args"`
+	ActiveUnixSocks              *ebpf.MapSpec `ebpf:"active_unix_socks"`
+	AerospikeState               *ebpf.MapSpec `ebpf:"aerospike_state"`
+	BackupBufferStorage          *ebpf.MapSpec `ebpf:"backup_buffer_storage"`
+	BioToSsl                     *ebpf.MapSpec `ebpf:"bio_to_ssl"`
+	CloneMap                     *ebpf.MapSpec `ebpf:"clone_map"`
+	ConnectionMetaMem            *ebpf.MapSpec `ebpf:"connection_meta_mem"`
+	ConnectionTracker            *ebpf.MapSpec `ebpf:"connection_tracker"`
+	CpSupportConnectInfo         *ebpf.MapSpec `ebpf:"cp_support_connect_info"`
+	DebugEvents                  *ebpf.MapSpec `ebpf:"debug_events"`
+	Events                       *ebpf.MapSpec `ebpf:"events"`
+	FdMap                        *ebpf.MapSpec `ebpf:"fd_map"`
+	FdToConnection               *ebpf.MapSpec `ebpf:"fd_to_connection"`
+	FilterPorts                  *ebpf.MapSpec `ebpf:"filter_ports"`
+	GoOffsetsMap                 *ebpf.MapSpec `ebpf:"go_offsets_map"`
+	GoTraceMap                   *ebpf.MapSpec `ebpf:"go_trace_map"`
+	GrpcFramesCtxMem             *ebpf.MapSpec `ebpf:"grpc_frames_ctx_mem"`
+	H2CutFrameStorage            *ebpf.MapSpec `ebpf:"h2_cut_frame_storage"`
+	H2CutFrames                  *ebpf.MapSpec `ebpf:"h2_cut_frames"`
+	H2JoinedStorage              *ebpf.MapSpec `ebpf:"h2_joined_storage"`
+	H2TpHuffOutStorage           *ebpf.MapSpec `ebpf:"h2_tp_huff_out_storage"`
+	H2TpHuffWinStorage           *ebpf.MapSpec `ebpf:"h2_tp_huff_win_storage"`
+	HandledByGoConn              *ebpf.MapSpec `ebpf:"handled_by_go_conn"`
+	Http2InfoStorage             *ebpf.MapSpec `ebpf:"http2_info_storage"`
+	HttpInfoMem                  *ebpf.MapSpec `ebpf:"http_info_mem"`
+	HttpPreviousTraceIdStorage   *ebpf.MapSpec `ebpf:"http_previous_trace_id_storage"`
+	IncomingTraceMap             *ebpf.MapSpec `ebpf:"incoming_trace_map"`
+	IovecMem                     *ebpf.MapSpec `ebpf:"iovec_mem"`
+	JavaTasks                    *ebpf.MapSpec `ebpf:"java_tasks"`
+	JavaVtThreads                *ebpf.MapSpec `ebpf:"java_vt_threads"`
+	JumpTable                    *ebpf.MapSpec `ebpf:"jump_table"`
+	JumpTableSkb                 *ebpf.MapSpec `ebpf:"jump_table_skb"`
+	JumpTableUm                  *ebpf.MapSpec `ebpf:"jump_table_um"`
+	JvmMemPoolSamples            *ebpf.MapSpec `ebpf:"jvm_mem_pool_samples"`
+	KafkaOngoingRequests         *ebpf.MapSpec `ebpf:"kafka_ongoing_requests"`
+	KafkaState                   *ebpf.MapSpec `ebpf:"kafka_state"`
+	LargeBufEmitStateStorage     *ebpf.MapSpec `ebpf:"large_buf_emit_state_storage"`
+	ListeningPorts               *ebpf.MapSpec `ebpf:"listening_ports"`
+	MsgBufferMem                 *ebpf.MapSpec `ebpf:"msg_buffer_mem"`
+	MsgBuffers                   *ebpf.MapSpec `ebpf:"msg_buffers"`
+	MysqlState                   *ebpf.MapSpec `ebpf:"mysql_state"`
+	NginxUpstream                *ebpf.MapSpec `ebpf:"nginx_upstream"`
+	NodejsFdMap                  *ebpf.MapSpec `ebpf:"nodejs_fd_map"`
+	NodejsRtPayloadStorage       *ebpf.MapSpec `ebpf:"nodejs_rt_payload_storage"`
+	NodejsV8PayloadStorage       *ebpf.MapSpec `ebpf:"nodejs_v8_payload_storage"`
+	ObiUsdtIpToSpecId            *ebpf.MapSpec `ebpf:"obi_usdt_ip_to_spec_id"`
+	ObiUsdtSpecs                 *ebpf.MapSpec `ebpf:"obi_usdt_specs"`
+	OngoingClientConnections     *ebpf.MapSpec `ebpf:"ongoing_client_connections"`
+	OngoingGoroutines            *ebpf.MapSpec `ebpf:"ongoing_goroutines"`
+	OngoingGrpcOperateHeaders    *ebpf.MapSpec `ebpf:"ongoing_grpc_operate_headers"`
+	OngoingGrpcTransports        *ebpf.MapSpec `ebpf:"ongoing_grpc_transports"`
+	OngoingHttp                  *ebpf.MapSpec `ebpf:"ongoing_http"`
+	OngoingHttp2Connections      *ebpf.MapSpec `ebpf:"ongoing_http2_connections"`
+	OngoingHttp2Grpc             *ebpf.MapSpec `ebpf:"ongoing_http2_grpc"`
+	OngoingServerConnections     *ebpf.MapSpec `ebpf:"ongoing_server_connections"`
+	OngoingSqlQueries            *ebpf.MapSpec `ebpf:"ongoing_sql_queries"`
+	OngoingTcpReq                *ebpf.MapSpec `ebpf:"ongoing_tcp_req"`
+	OutgoingTraceMap             *ebpf.MapSpec `ebpf:"outgoing_trace_map"`
+	PidCache                     *ebpf.MapSpec `ebpf:"pid_cache"`
+	PidTidToConn                 *ebpf.MapSpec `ebpf:"pid_tid_to_conn"`
+	ProtocolArgsMem              *ebpf.MapSpec `ebpf:"protocol_args_mem"`
+	ProtocolCache                *ebpf.MapSpec `ebpf:"protocol_cache"`
+	PumaTaskConnections          *ebpf.MapSpec `ebpf:"puma_task_connections"`
+	PumaWorkerTasks              *ebpf.MapSpec `ebpf:"puma_worker_tasks"`
+	PythonContextTask            *ebpf.MapSpec `ebpf:"python_context_task"`
+	PythonRuntimeMetricSnapshots *ebpf.MapSpec `ebpf:"python_runtime_metric_snapshots"`
+	PythonRuntimeMetricTargets   *ebpf.MapSpec `ebpf:"python_runtime_metric_targets"`
+	PythonTaskGeneration         *ebpf.MapSpec `ebpf:"python_task_generation"`
+	PythonTaskState              *ebpf.MapSpec `ebpf:"python_task_state"`
+	PythonThreadState            *ebpf.MapSpec `ebpf:"python_thread_state"`
+	ServerTraces                 *ebpf.MapSpec `ebpf:"server_traces"`
+	ServerTracesAux              *ebpf.MapSpec `ebpf:"server_traces_aux"`
+	SockFilterBuffers            *ebpf.MapSpec `ebpf:"sock_filter_buffers"`
+	SockJumpTable                *ebpf.MapSpec `ebpf:"sock_jump_table"`
+	SockPids                     *ebpf.MapSpec `ebpf:"sock_pids"`
+	SockTailcallCtxStorage       *ebpf.MapSpec `ebpf:"sock_tailcall_ctx_storage"`
+	SslToBios                    *ebpf.MapSpec `ebpf:"ssl_to_bios"`
+	SslToConn                    *ebpf.MapSpec `ebpf:"ssl_to_conn"`
+	SslToPidTid                  *ebpf.MapSpec `ebpf:"ssl_to_pid_tid"`
+	TcpConnectionMap             *ebpf.MapSpec `ebpf:"tcp_connection_map"`
+	TcpLargeBuffersStorage       *ebpf.MapSpec `ebpf:"tcp_large_buffers_storage"`
+	TcpReqMem                    *ebpf.MapSpec `ebpf:"tcp_req_mem"`
+	TlsPrefixStorage             *ebpf.MapSpec `ebpf:"tls_prefix_storage"`
+	TlsPrefixToSsl               *ebpf.MapSpec `ebpf:"tls_prefix_to_ssl"`
+	TpCharBufStorage             *ebpf.MapSpec `ebpf:"tp_char_buf_storage"`
+	TpInfoBackupStorage          *ebpf.MapSpec `ebpf:"tp_info_backup_storage"`
+	TpInfoStorage                *ebpf.MapSpec `ebpf:"tp_info_storage"`
+	TraceMap                     *ebpf.MapSpec `ebpf:"trace_map"`
+	TracesCtxV1                  *ebpf.MapSpec `ebpf:"traces_ctx_v1"`
+	UnconnDnsPending             *ebpf.MapSpec `ebpf:"unconn_dns_pending"`
+	UnconnDnsSocks               *ebpf.MapSpec `ebpf:"unconn_dns_socks"`
+	UnreadableBufferPorts        *ebpf.MapSpec `ebpf:"unreadable_buffer_ports"`
+	UpstreamInitArgs             *ebpf.MapSpec `ebpf:"upstream_init_args"`
+	ValidPids                    *ebpf.MapSpec `ebpf:"valid_pids"`
 }
 
 // BpfVariableSpecs contains global variables before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfVariableSpecs struct {
-	INVALID_POS              *ebpf.VariableSpec `ebpf:"INVALID_POS"`
-	PUMA_SRV                 *ebpf.VariableSpec `ebpf:"PUMA_SRV"`
-	PUMA_SRV_THREAD          *ebpf.VariableSpec `ebpf:"PUMA_SRV_THREAD"`
-	PUMA_WORKER              *ebpf.VariableSpec `ebpf:"PUMA_WORKER"`
-	TP                       *ebpf.VariableSpec `ebpf:"TP"`
-	TP_PREFIX                *ebpf.VariableSpec `ebpf:"TP_PREFIX"`
-	TP_PREFIX_SIZE           *ebpf.VariableSpec `ebpf:"TP_PREFIX_SIZE"`
-	TP_SIZE                  *ebpf.VariableSpec `ebpf:"TP_SIZE"`
-	TP_TID_PREFIX            *ebpf.VariableSpec `ebpf:"TP_TID_PREFIX"`
-	TP_TID_PREFIX_SIZE       *ebpf.VariableSpec `ebpf:"TP_TID_PREFIX_SIZE"`
-	PnUnused                 *ebpf.VariableSpec `ebpf:"__pn_unused"`
-	JvmMemPoolGcEvent        *ebpf.VariableSpec `ebpf:"_jvm_mem_pool_gc_event"`
-	CaptureHeaderBuffer      *ebpf.VariableSpec `ebpf:"capture_header_buffer"`
-	DisableBlackBoxCp        *ebpf.VariableSpec `ebpf:"disable_black_box_cp"`
-	FilterPids               *ebpf.VariableSpec `ebpf:"filter_pids"`
-	G_bpfDebug               *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation   *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled         *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled  *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
-	HighRequestVolume        *ebpf.VariableSpec `ebpf:"high_request_volume"`
-	HttpMaxCapturedBytes     *ebpf.VariableSpec `ebpf:"http_max_captured_bytes"`
-	Ip4ip6Prefix             *ebpf.VariableSpec `ebpf:"ip4ip6_prefix"`
-	JvmSamplingIntervalNs    *ebpf.VariableSpec `ebpf:"jvm_sampling_interval_ns"`
-	KafkaMaxCapturedBytes    *ebpf.VariableSpec `ebpf:"kafka_max_captured_bytes"`
-	MaxTransactionTime       *ebpf.VariableSpec `ebpf:"max_transaction_time"`
-	MssqlMaxCapturedBytes    *ebpf.VariableSpec `ebpf:"mssql_max_captured_bytes"`
-	MysqlMaxCapturedBytes    *ebpf.VariableSpec `ebpf:"mysql_max_captured_bytes"`
-	NgxConnectionS_fd        *ebpf.VariableSpec `ebpf:"ngx_connection_s_fd"`
-	NgxConnectionS_sockaddr  *ebpf.VariableSpec `ebpf:"ngx_connection_s_sockaddr"`
-	NgxHttpRequestS_conn     *ebpf.VariableSpec `ebpf:"ngx_http_request_s_conn"`
-	NgxHttpRequestS_upstream *ebpf.VariableSpec `ebpf:"ngx_http_request_s_upstream"`
-	NgxHttpRevS_conn         *ebpf.VariableSpec `ebpf:"ngx_http_rev_s_conn"`
-	NgxHttpUpstreamS_conn    *ebpf.VariableSpec `ebpf:"ngx_http_upstream_s_conn"`
-	PostgresMaxCapturedBytes *ebpf.VariableSpec `ebpf:"postgres_max_captured_bytes"`
-	TcpMaxCapturedBytes      *ebpf.VariableSpec `ebpf:"tcp_max_captured_bytes"`
-	Unused                   *ebpf.VariableSpec `ebpf:"unused"`
-	UnusedHttp2              *ebpf.VariableSpec `ebpf:"unused_http2"`
-	WakeupDataBytes          *ebpf.VariableSpec `ebpf:"wakeup_data_bytes"`
+	INVALID_POS                 *ebpf.VariableSpec `ebpf:"INVALID_POS"`
+	PUMA_SRV                    *ebpf.VariableSpec `ebpf:"PUMA_SRV"`
+	PUMA_SRV_THREAD             *ebpf.VariableSpec `ebpf:"PUMA_SRV_THREAD"`
+	PUMA_WORKER                 *ebpf.VariableSpec `ebpf:"PUMA_WORKER"`
+	TP                          *ebpf.VariableSpec `ebpf:"TP"`
+	TP_PREFIX                   *ebpf.VariableSpec `ebpf:"TP_PREFIX"`
+	TP_PREFIX_SIZE              *ebpf.VariableSpec `ebpf:"TP_PREFIX_SIZE"`
+	TP_SIZE                     *ebpf.VariableSpec `ebpf:"TP_SIZE"`
+	TP_TID_PREFIX               *ebpf.VariableSpec `ebpf:"TP_TID_PREFIX"`
+	TP_TID_PREFIX_SIZE          *ebpf.VariableSpec `ebpf:"TP_TID_PREFIX_SIZE"`
+	PnUnused                    *ebpf.VariableSpec `ebpf:"__pn_unused"`
+	JvmGcDurationEvent          *ebpf.VariableSpec `ebpf:"_jvm_gc_duration_event"`
+	JvmMemPoolGcEvent           *ebpf.VariableSpec `ebpf:"_jvm_mem_pool_gc_event"`
+	JvmRuntimeMetricsEvent      *ebpf.VariableSpec `ebpf:"_jvm_runtime_metrics_event"`
+	NodejsEventloopEvent        *ebpf.VariableSpec `ebpf:"_nodejs_eventloop_event"`
+	AerospikeMaxCapturedBytes   *ebpf.VariableSpec `ebpf:"aerospike_max_captured_bytes"`
+	CaptureHeaderBuffer         *ebpf.VariableSpec `ebpf:"capture_header_buffer"`
+	DisableBlackBoxCp           *ebpf.VariableSpec `ebpf:"disable_black_box_cp"`
+	FilterPids                  *ebpf.VariableSpec `ebpf:"filter_pids"`
+	G_bpfDebug                  *ebpf.VariableSpec `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation      *ebpf.VariableSpec `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled            *ebpf.VariableSpec `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled  *ebpf.VariableSpec `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled     *ebpf.VariableSpec `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep         *ebpf.VariableSpec `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled        *ebpf.VariableSpec `ebpf:"g_traces_ctx_v1_enabled"`
+	HighRequestVolume           *ebpf.VariableSpec `ebpf:"high_request_volume"`
+	HttpMaxCapturedBytes        *ebpf.VariableSpec `ebpf:"http_max_captured_bytes"`
+	Ip4ip6Prefix                *ebpf.VariableSpec `ebpf:"ip4ip6_prefix"`
+	JvmSamplingIntervalNs       *ebpf.VariableSpec `ebpf:"jvm_sampling_interval_ns"`
+	KafkaMaxCapturedBytes       *ebpf.VariableSpec `ebpf:"kafka_max_captured_bytes"`
+	MaxTransactionTime          *ebpf.VariableSpec `ebpf:"max_transaction_time"`
+	MssqlMaxCapturedBytes       *ebpf.VariableSpec `ebpf:"mssql_max_captured_bytes"`
+	MysqlMaxCapturedBytes       *ebpf.VariableSpec `ebpf:"mysql_max_captured_bytes"`
+	NgxConnectionS_fd           *ebpf.VariableSpec `ebpf:"ngx_connection_s_fd"`
+	NgxConnectionS_sockaddr     *ebpf.VariableSpec `ebpf:"ngx_connection_s_sockaddr"`
+	NgxHttpRequestS_conn        *ebpf.VariableSpec `ebpf:"ngx_http_request_s_conn"`
+	NgxHttpRequestS_upstream    *ebpf.VariableSpec `ebpf:"ngx_http_request_s_upstream"`
+	NgxHttpRevS_conn            *ebpf.VariableSpec `ebpf:"ngx_http_rev_s_conn"`
+	NgxHttpUpstreamS_conn       *ebpf.VariableSpec `ebpf:"ngx_http_upstream_s_conn"`
+	NodejsRuntimeMetricsEnabled *ebpf.VariableSpec `ebpf:"nodejs_runtime_metrics_enabled"`
+	PostgresMaxCapturedBytes    *ebpf.VariableSpec `ebpf:"postgres_max_captured_bytes"`
+	TcpMaxCapturedBytes         *ebpf.VariableSpec `ebpf:"tcp_max_captured_bytes"`
+	Unused                      *ebpf.VariableSpec `ebpf:"unused"`
+	UnusedHttp2                 *ebpf.VariableSpec `ebpf:"unused_http2"`
+	WakeupDataBytes             *ebpf.VariableSpec `ebpf:"wakeup_data_bytes"`
 }
 
 // BpfObjects contains all objects after they have been loaded into the kernel.
@@ -956,89 +1213,107 @@ func (o *BpfObjects) Close() error {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfMaps struct {
-	ActiveAcceptArgs           *ebpf.Map `ebpf:"active_accept_args"`
-	ActiveConnectArgs          *ebpf.Map `ebpf:"active_connect_args"`
-	ActiveRecvArgs             *ebpf.Map `ebpf:"active_recv_args"`
-	ActiveSendArgs             *ebpf.Map `ebpf:"active_send_args"`
-	ActiveSendSockArgs         *ebpf.Map `ebpf:"active_send_sock_args"`
-	ActiveSslConnections       *ebpf.Map `ebpf:"active_ssl_connections"`
-	ActiveSslReadArgs          *ebpf.Map `ebpf:"active_ssl_read_args"`
-	ActiveSslWriteArgs         *ebpf.Map `ebpf:"active_ssl_write_args"`
-	ActiveUnixSocks            *ebpf.Map `ebpf:"active_unix_socks"`
-	BackupBufferStorage        *ebpf.Map `ebpf:"backup_buffer_storage"`
-	CloneMap                   *ebpf.Map `ebpf:"clone_map"`
-	ConnectionMetaMem          *ebpf.Map `ebpf:"connection_meta_mem"`
-	ConnectionTracker          *ebpf.Map `ebpf:"connection_tracker"`
-	CpSupportConnectInfo       *ebpf.Map `ebpf:"cp_support_connect_info"`
-	DebugEvents                *ebpf.Map `ebpf:"debug_events"`
-	Events                     *ebpf.Map `ebpf:"events"`
-	FdMap                      *ebpf.Map `ebpf:"fd_map"`
-	FdToConnection             *ebpf.Map `ebpf:"fd_to_connection"`
-	FilterPorts                *ebpf.Map `ebpf:"filter_ports"`
-	GoOffsetsMap               *ebpf.Map `ebpf:"go_offsets_map"`
-	GoTraceMap                 *ebpf.Map `ebpf:"go_trace_map"`
-	GrpcFramesCtxMem           *ebpf.Map `ebpf:"grpc_frames_ctx_mem"`
-	HandledByGoConn            *ebpf.Map `ebpf:"handled_by_go_conn"`
-	Http2InfoStorage           *ebpf.Map `ebpf:"http2_info_storage"`
-	HttpInfoMem                *ebpf.Map `ebpf:"http_info_mem"`
-	HttpPreviousTraceIdStorage *ebpf.Map `ebpf:"http_previous_trace_id_storage"`
-	IncomingTraceMap           *ebpf.Map `ebpf:"incoming_trace_map"`
-	IovecMem                   *ebpf.Map `ebpf:"iovec_mem"`
-	JavaTasks                  *ebpf.Map `ebpf:"java_tasks"`
-	JavaVtThreads              *ebpf.Map `ebpf:"java_vt_threads"`
-	JumpTable                  *ebpf.Map `ebpf:"jump_table"`
-	JumpTableSkb               *ebpf.Map `ebpf:"jump_table_skb"`
-	JvmMemPoolSamples          *ebpf.Map `ebpf:"jvm_mem_pool_samples"`
-	KafkaOngoingRequests       *ebpf.Map `ebpf:"kafka_ongoing_requests"`
-	KafkaState                 *ebpf.Map `ebpf:"kafka_state"`
-	LargeBufEmitStateStorage   *ebpf.Map `ebpf:"large_buf_emit_state_storage"`
-	ListeningPorts             *ebpf.Map `ebpf:"listening_ports"`
-	MsgBufferMem               *ebpf.Map `ebpf:"msg_buffer_mem"`
-	MsgBuffers                 *ebpf.Map `ebpf:"msg_buffers"`
-	MysqlState                 *ebpf.Map `ebpf:"mysql_state"`
-	NginxUpstream              *ebpf.Map `ebpf:"nginx_upstream"`
-	NodejsFdMap                *ebpf.Map `ebpf:"nodejs_fd_map"`
-	ObiUsdtIpToSpecId          *ebpf.Map `ebpf:"obi_usdt_ip_to_spec_id"`
-	ObiUsdtSpecs               *ebpf.Map `ebpf:"obi_usdt_specs"`
-	OngoingClientConnections   *ebpf.Map `ebpf:"ongoing_client_connections"`
-	OngoingGoroutines          *ebpf.Map `ebpf:"ongoing_goroutines"`
-	OngoingGrpcOperateHeaders  *ebpf.Map `ebpf:"ongoing_grpc_operate_headers"`
-	OngoingGrpcTransports      *ebpf.Map `ebpf:"ongoing_grpc_transports"`
-	OngoingHttp                *ebpf.Map `ebpf:"ongoing_http"`
-	OngoingHttp2Connections    *ebpf.Map `ebpf:"ongoing_http2_connections"`
-	OngoingHttp2Grpc           *ebpf.Map `ebpf:"ongoing_http2_grpc"`
-	OngoingServerConnections   *ebpf.Map `ebpf:"ongoing_server_connections"`
-	OngoingSqlQueries          *ebpf.Map `ebpf:"ongoing_sql_queries"`
-	OngoingTcpReq              *ebpf.Map `ebpf:"ongoing_tcp_req"`
-	OutgoingTraceMap           *ebpf.Map `ebpf:"outgoing_trace_map"`
-	PidCache                   *ebpf.Map `ebpf:"pid_cache"`
-	PidTidToConn               *ebpf.Map `ebpf:"pid_tid_to_conn"`
-	ProtocolArgsMem            *ebpf.Map `ebpf:"protocol_args_mem"`
-	ProtocolCache              *ebpf.Map `ebpf:"protocol_cache"`
-	PumaTaskConnections        *ebpf.Map `ebpf:"puma_task_connections"`
-	PumaWorkerTasks            *ebpf.Map `ebpf:"puma_worker_tasks"`
-	PythonContextTask          *ebpf.Map `ebpf:"python_context_task"`
-	PythonTaskState            *ebpf.Map `ebpf:"python_task_state"`
-	PythonThreadState          *ebpf.Map `ebpf:"python_thread_state"`
-	ServerTraces               *ebpf.Map `ebpf:"server_traces"`
-	ServerTracesAux            *ebpf.Map `ebpf:"server_traces_aux"`
-	SockFilterBuffers          *ebpf.Map `ebpf:"sock_filter_buffers"`
-	SockJumpTable              *ebpf.Map `ebpf:"sock_jump_table"`
-	SockPids                   *ebpf.Map `ebpf:"sock_pids"`
-	SockTailcallCtxStorage     *ebpf.Map `ebpf:"sock_tailcall_ctx_storage"`
-	SslToConn                  *ebpf.Map `ebpf:"ssl_to_conn"`
-	SslToPidTid                *ebpf.Map `ebpf:"ssl_to_pid_tid"`
-	TcpConnectionMap           *ebpf.Map `ebpf:"tcp_connection_map"`
-	TcpLargeBuffersStorage     *ebpf.Map `ebpf:"tcp_large_buffers_storage"`
-	TcpReqMem                  *ebpf.Map `ebpf:"tcp_req_mem"`
-	TpCharBufStorage           *ebpf.Map `ebpf:"tp_char_buf_storage"`
-	TpInfoBackupStorage        *ebpf.Map `ebpf:"tp_info_backup_storage"`
-	TpInfoStorage              *ebpf.Map `ebpf:"tp_info_storage"`
-	TraceMap                   *ebpf.Map `ebpf:"trace_map"`
-	TracesCtxV1                *ebpf.Map `ebpf:"traces_ctx_v1"`
-	UnreadableBufferPorts      *ebpf.Map `ebpf:"unreadable_buffer_ports"`
-	UpstreamInitArgs           *ebpf.Map `ebpf:"upstream_init_args"`
-	ValidPids                  *ebpf.Map `ebpf:"valid_pids"`
+	ActiveAcceptArgs             *ebpf.Map `ebpf:"active_accept_args"`
+	ActiveConnectArgs            *ebpf.Map `ebpf:"active_connect_args"`
+	ActiveRecvArgs               *ebpf.Map `ebpf:"active_recv_args"`
+	ActiveSendArgs               *ebpf.Map `ebpf:"active_send_args"`
+	ActiveSendSockArgs           *ebpf.Map `ebpf:"active_send_sock_args"`
+	ActiveSslConnections         *ebpf.Map `ebpf:"active_ssl_connections"`
+	ActiveSslReadArgs            *ebpf.Map `ebpf:"active_ssl_read_args"`
+	ActiveSslWriteArgs           *ebpf.Map `ebpf:"active_ssl_write_args"`
+	ActiveUnixSocks              *ebpf.Map `ebpf:"active_unix_socks"`
+	AerospikeState               *ebpf.Map `ebpf:"aerospike_state"`
+	BackupBufferStorage          *ebpf.Map `ebpf:"backup_buffer_storage"`
+	BioToSsl                     *ebpf.Map `ebpf:"bio_to_ssl"`
+	CloneMap                     *ebpf.Map `ebpf:"clone_map"`
+	ConnectionMetaMem            *ebpf.Map `ebpf:"connection_meta_mem"`
+	ConnectionTracker            *ebpf.Map `ebpf:"connection_tracker"`
+	CpSupportConnectInfo         *ebpf.Map `ebpf:"cp_support_connect_info"`
+	DebugEvents                  *ebpf.Map `ebpf:"debug_events"`
+	Events                       *ebpf.Map `ebpf:"events"`
+	FdMap                        *ebpf.Map `ebpf:"fd_map"`
+	FdToConnection               *ebpf.Map `ebpf:"fd_to_connection"`
+	FilterPorts                  *ebpf.Map `ebpf:"filter_ports"`
+	GoOffsetsMap                 *ebpf.Map `ebpf:"go_offsets_map"`
+	GoTraceMap                   *ebpf.Map `ebpf:"go_trace_map"`
+	GrpcFramesCtxMem             *ebpf.Map `ebpf:"grpc_frames_ctx_mem"`
+	H2CutFrameStorage            *ebpf.Map `ebpf:"h2_cut_frame_storage"`
+	H2CutFrames                  *ebpf.Map `ebpf:"h2_cut_frames"`
+	H2JoinedStorage              *ebpf.Map `ebpf:"h2_joined_storage"`
+	H2TpHuffOutStorage           *ebpf.Map `ebpf:"h2_tp_huff_out_storage"`
+	H2TpHuffWinStorage           *ebpf.Map `ebpf:"h2_tp_huff_win_storage"`
+	HandledByGoConn              *ebpf.Map `ebpf:"handled_by_go_conn"`
+	Http2InfoStorage             *ebpf.Map `ebpf:"http2_info_storage"`
+	HttpInfoMem                  *ebpf.Map `ebpf:"http_info_mem"`
+	HttpPreviousTraceIdStorage   *ebpf.Map `ebpf:"http_previous_trace_id_storage"`
+	IncomingTraceMap             *ebpf.Map `ebpf:"incoming_trace_map"`
+	IovecMem                     *ebpf.Map `ebpf:"iovec_mem"`
+	JavaTasks                    *ebpf.Map `ebpf:"java_tasks"`
+	JavaVtThreads                *ebpf.Map `ebpf:"java_vt_threads"`
+	JumpTable                    *ebpf.Map `ebpf:"jump_table"`
+	JumpTableSkb                 *ebpf.Map `ebpf:"jump_table_skb"`
+	JumpTableUm                  *ebpf.Map `ebpf:"jump_table_um"`
+	JvmMemPoolSamples            *ebpf.Map `ebpf:"jvm_mem_pool_samples"`
+	KafkaOngoingRequests         *ebpf.Map `ebpf:"kafka_ongoing_requests"`
+	KafkaState                   *ebpf.Map `ebpf:"kafka_state"`
+	LargeBufEmitStateStorage     *ebpf.Map `ebpf:"large_buf_emit_state_storage"`
+	ListeningPorts               *ebpf.Map `ebpf:"listening_ports"`
+	MsgBufferMem                 *ebpf.Map `ebpf:"msg_buffer_mem"`
+	MsgBuffers                   *ebpf.Map `ebpf:"msg_buffers"`
+	MysqlState                   *ebpf.Map `ebpf:"mysql_state"`
+	NginxUpstream                *ebpf.Map `ebpf:"nginx_upstream"`
+	NodejsFdMap                  *ebpf.Map `ebpf:"nodejs_fd_map"`
+	NodejsRtPayloadStorage       *ebpf.Map `ebpf:"nodejs_rt_payload_storage"`
+	NodejsV8PayloadStorage       *ebpf.Map `ebpf:"nodejs_v8_payload_storage"`
+	ObiUsdtIpToSpecId            *ebpf.Map `ebpf:"obi_usdt_ip_to_spec_id"`
+	ObiUsdtSpecs                 *ebpf.Map `ebpf:"obi_usdt_specs"`
+	OngoingClientConnections     *ebpf.Map `ebpf:"ongoing_client_connections"`
+	OngoingGoroutines            *ebpf.Map `ebpf:"ongoing_goroutines"`
+	OngoingGrpcOperateHeaders    *ebpf.Map `ebpf:"ongoing_grpc_operate_headers"`
+	OngoingGrpcTransports        *ebpf.Map `ebpf:"ongoing_grpc_transports"`
+	OngoingHttp                  *ebpf.Map `ebpf:"ongoing_http"`
+	OngoingHttp2Connections      *ebpf.Map `ebpf:"ongoing_http2_connections"`
+	OngoingHttp2Grpc             *ebpf.Map `ebpf:"ongoing_http2_grpc"`
+	OngoingServerConnections     *ebpf.Map `ebpf:"ongoing_server_connections"`
+	OngoingSqlQueries            *ebpf.Map `ebpf:"ongoing_sql_queries"`
+	OngoingTcpReq                *ebpf.Map `ebpf:"ongoing_tcp_req"`
+	OutgoingTraceMap             *ebpf.Map `ebpf:"outgoing_trace_map"`
+	PidCache                     *ebpf.Map `ebpf:"pid_cache"`
+	PidTidToConn                 *ebpf.Map `ebpf:"pid_tid_to_conn"`
+	ProtocolArgsMem              *ebpf.Map `ebpf:"protocol_args_mem"`
+	ProtocolCache                *ebpf.Map `ebpf:"protocol_cache"`
+	PumaTaskConnections          *ebpf.Map `ebpf:"puma_task_connections"`
+	PumaWorkerTasks              *ebpf.Map `ebpf:"puma_worker_tasks"`
+	PythonContextTask            *ebpf.Map `ebpf:"python_context_task"`
+	PythonRuntimeMetricSnapshots *ebpf.Map `ebpf:"python_runtime_metric_snapshots"`
+	PythonRuntimeMetricTargets   *ebpf.Map `ebpf:"python_runtime_metric_targets"`
+	PythonTaskGeneration         *ebpf.Map `ebpf:"python_task_generation"`
+	PythonTaskState              *ebpf.Map `ebpf:"python_task_state"`
+	PythonThreadState            *ebpf.Map `ebpf:"python_thread_state"`
+	ServerTraces                 *ebpf.Map `ebpf:"server_traces"`
+	ServerTracesAux              *ebpf.Map `ebpf:"server_traces_aux"`
+	SockFilterBuffers            *ebpf.Map `ebpf:"sock_filter_buffers"`
+	SockJumpTable                *ebpf.Map `ebpf:"sock_jump_table"`
+	SockPids                     *ebpf.Map `ebpf:"sock_pids"`
+	SockTailcallCtxStorage       *ebpf.Map `ebpf:"sock_tailcall_ctx_storage"`
+	SslToBios                    *ebpf.Map `ebpf:"ssl_to_bios"`
+	SslToConn                    *ebpf.Map `ebpf:"ssl_to_conn"`
+	SslToPidTid                  *ebpf.Map `ebpf:"ssl_to_pid_tid"`
+	TcpConnectionMap             *ebpf.Map `ebpf:"tcp_connection_map"`
+	TcpLargeBuffersStorage       *ebpf.Map `ebpf:"tcp_large_buffers_storage"`
+	TcpReqMem                    *ebpf.Map `ebpf:"tcp_req_mem"`
+	TlsPrefixStorage             *ebpf.Map `ebpf:"tls_prefix_storage"`
+	TlsPrefixToSsl               *ebpf.Map `ebpf:"tls_prefix_to_ssl"`
+	TpCharBufStorage             *ebpf.Map `ebpf:"tp_char_buf_storage"`
+	TpInfoBackupStorage          *ebpf.Map `ebpf:"tp_info_backup_storage"`
+	TpInfoStorage                *ebpf.Map `ebpf:"tp_info_storage"`
+	TraceMap                     *ebpf.Map `ebpf:"trace_map"`
+	TracesCtxV1                  *ebpf.Map `ebpf:"traces_ctx_v1"`
+	UnconnDnsPending             *ebpf.Map `ebpf:"unconn_dns_pending"`
+	UnconnDnsSocks               *ebpf.Map `ebpf:"unconn_dns_socks"`
+	UnreadableBufferPorts        *ebpf.Map `ebpf:"unreadable_buffer_ports"`
+	UpstreamInitArgs             *ebpf.Map `ebpf:"upstream_init_args"`
+	ValidPids                    *ebpf.Map `ebpf:"valid_pids"`
 }
 
 func (m *BpfMaps) Close() error {
@@ -1052,7 +1327,9 @@ func (m *BpfMaps) Close() error {
 		m.ActiveSslReadArgs,
 		m.ActiveSslWriteArgs,
 		m.ActiveUnixSocks,
+		m.AerospikeState,
 		m.BackupBufferStorage,
+		m.BioToSsl,
 		m.CloneMap,
 		m.ConnectionMetaMem,
 		m.ConnectionTracker,
@@ -1065,6 +1342,11 @@ func (m *BpfMaps) Close() error {
 		m.GoOffsetsMap,
 		m.GoTraceMap,
 		m.GrpcFramesCtxMem,
+		m.H2CutFrameStorage,
+		m.H2CutFrames,
+		m.H2JoinedStorage,
+		m.H2TpHuffOutStorage,
+		m.H2TpHuffWinStorage,
 		m.HandledByGoConn,
 		m.Http2InfoStorage,
 		m.HttpInfoMem,
@@ -1075,6 +1357,7 @@ func (m *BpfMaps) Close() error {
 		m.JavaVtThreads,
 		m.JumpTable,
 		m.JumpTableSkb,
+		m.JumpTableUm,
 		m.JvmMemPoolSamples,
 		m.KafkaOngoingRequests,
 		m.KafkaState,
@@ -1085,6 +1368,8 @@ func (m *BpfMaps) Close() error {
 		m.MysqlState,
 		m.NginxUpstream,
 		m.NodejsFdMap,
+		m.NodejsRtPayloadStorage,
+		m.NodejsV8PayloadStorage,
 		m.ObiUsdtIpToSpecId,
 		m.ObiUsdtSpecs,
 		m.OngoingClientConnections,
@@ -1105,6 +1390,9 @@ func (m *BpfMaps) Close() error {
 		m.PumaTaskConnections,
 		m.PumaWorkerTasks,
 		m.PythonContextTask,
+		m.PythonRuntimeMetricSnapshots,
+		m.PythonRuntimeMetricTargets,
+		m.PythonTaskGeneration,
 		m.PythonTaskState,
 		m.PythonThreadState,
 		m.ServerTraces,
@@ -1113,16 +1401,21 @@ func (m *BpfMaps) Close() error {
 		m.SockJumpTable,
 		m.SockPids,
 		m.SockTailcallCtxStorage,
+		m.SslToBios,
 		m.SslToConn,
 		m.SslToPidTid,
 		m.TcpConnectionMap,
 		m.TcpLargeBuffersStorage,
 		m.TcpReqMem,
+		m.TlsPrefixStorage,
+		m.TlsPrefixToSsl,
 		m.TpCharBufStorage,
 		m.TpInfoBackupStorage,
 		m.TpInfoStorage,
 		m.TraceMap,
 		m.TracesCtxV1,
+		m.UnconnDnsPending,
+		m.UnconnDnsSocks,
 		m.UnreadableBufferPorts,
 		m.UpstreamInitArgs,
 		m.ValidPids,
@@ -1133,44 +1426,52 @@ func (m *BpfMaps) Close() error {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfVariables struct {
-	INVALID_POS              *ebpf.Variable `ebpf:"INVALID_POS"`
-	PUMA_SRV                 *ebpf.Variable `ebpf:"PUMA_SRV"`
-	PUMA_SRV_THREAD          *ebpf.Variable `ebpf:"PUMA_SRV_THREAD"`
-	PUMA_WORKER              *ebpf.Variable `ebpf:"PUMA_WORKER"`
-	TP                       *ebpf.Variable `ebpf:"TP"`
-	TP_PREFIX                *ebpf.Variable `ebpf:"TP_PREFIX"`
-	TP_PREFIX_SIZE           *ebpf.Variable `ebpf:"TP_PREFIX_SIZE"`
-	TP_SIZE                  *ebpf.Variable `ebpf:"TP_SIZE"`
-	TP_TID_PREFIX            *ebpf.Variable `ebpf:"TP_TID_PREFIX"`
-	TP_TID_PREFIX_SIZE       *ebpf.Variable `ebpf:"TP_TID_PREFIX_SIZE"`
-	PnUnused                 *ebpf.Variable `ebpf:"__pn_unused"`
-	JvmMemPoolGcEvent        *ebpf.Variable `ebpf:"_jvm_mem_pool_gc_event"`
-	CaptureHeaderBuffer      *ebpf.Variable `ebpf:"capture_header_buffer"`
-	DisableBlackBoxCp        *ebpf.Variable `ebpf:"disable_black_box_cp"`
-	FilterPids               *ebpf.Variable `ebpf:"filter_pids"`
-	G_bpfDebug               *ebpf.Variable `ebpf:"g_bpf_debug"`
-	G_bpfHeaderPropagation   *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
-	G_bpfLoopEnabled         *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
-	G_bpfTraceparentEnabled  *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
-	HighRequestVolume        *ebpf.Variable `ebpf:"high_request_volume"`
-	HttpMaxCapturedBytes     *ebpf.Variable `ebpf:"http_max_captured_bytes"`
-	Ip4ip6Prefix             *ebpf.Variable `ebpf:"ip4ip6_prefix"`
-	JvmSamplingIntervalNs    *ebpf.Variable `ebpf:"jvm_sampling_interval_ns"`
-	KafkaMaxCapturedBytes    *ebpf.Variable `ebpf:"kafka_max_captured_bytes"`
-	MaxTransactionTime       *ebpf.Variable `ebpf:"max_transaction_time"`
-	MssqlMaxCapturedBytes    *ebpf.Variable `ebpf:"mssql_max_captured_bytes"`
-	MysqlMaxCapturedBytes    *ebpf.Variable `ebpf:"mysql_max_captured_bytes"`
-	NgxConnectionS_fd        *ebpf.Variable `ebpf:"ngx_connection_s_fd"`
-	NgxConnectionS_sockaddr  *ebpf.Variable `ebpf:"ngx_connection_s_sockaddr"`
-	NgxHttpRequestS_conn     *ebpf.Variable `ebpf:"ngx_http_request_s_conn"`
-	NgxHttpRequestS_upstream *ebpf.Variable `ebpf:"ngx_http_request_s_upstream"`
-	NgxHttpRevS_conn         *ebpf.Variable `ebpf:"ngx_http_rev_s_conn"`
-	NgxHttpUpstreamS_conn    *ebpf.Variable `ebpf:"ngx_http_upstream_s_conn"`
-	PostgresMaxCapturedBytes *ebpf.Variable `ebpf:"postgres_max_captured_bytes"`
-	TcpMaxCapturedBytes      *ebpf.Variable `ebpf:"tcp_max_captured_bytes"`
-	Unused                   *ebpf.Variable `ebpf:"unused"`
-	UnusedHttp2              *ebpf.Variable `ebpf:"unused_http2"`
-	WakeupDataBytes          *ebpf.Variable `ebpf:"wakeup_data_bytes"`
+	INVALID_POS                 *ebpf.Variable `ebpf:"INVALID_POS"`
+	PUMA_SRV                    *ebpf.Variable `ebpf:"PUMA_SRV"`
+	PUMA_SRV_THREAD             *ebpf.Variable `ebpf:"PUMA_SRV_THREAD"`
+	PUMA_WORKER                 *ebpf.Variable `ebpf:"PUMA_WORKER"`
+	TP                          *ebpf.Variable `ebpf:"TP"`
+	TP_PREFIX                   *ebpf.Variable `ebpf:"TP_PREFIX"`
+	TP_PREFIX_SIZE              *ebpf.Variable `ebpf:"TP_PREFIX_SIZE"`
+	TP_SIZE                     *ebpf.Variable `ebpf:"TP_SIZE"`
+	TP_TID_PREFIX               *ebpf.Variable `ebpf:"TP_TID_PREFIX"`
+	TP_TID_PREFIX_SIZE          *ebpf.Variable `ebpf:"TP_TID_PREFIX_SIZE"`
+	PnUnused                    *ebpf.Variable `ebpf:"__pn_unused"`
+	JvmGcDurationEvent          *ebpf.Variable `ebpf:"_jvm_gc_duration_event"`
+	JvmMemPoolGcEvent           *ebpf.Variable `ebpf:"_jvm_mem_pool_gc_event"`
+	JvmRuntimeMetricsEvent      *ebpf.Variable `ebpf:"_jvm_runtime_metrics_event"`
+	NodejsEventloopEvent        *ebpf.Variable `ebpf:"_nodejs_eventloop_event"`
+	AerospikeMaxCapturedBytes   *ebpf.Variable `ebpf:"aerospike_max_captured_bytes"`
+	CaptureHeaderBuffer         *ebpf.Variable `ebpf:"capture_header_buffer"`
+	DisableBlackBoxCp           *ebpf.Variable `ebpf:"disable_black_box_cp"`
+	FilterPids                  *ebpf.Variable `ebpf:"filter_pids"`
+	G_bpfDebug                  *ebpf.Variable `ebpf:"g_bpf_debug"`
+	G_bpfHeaderPropagation      *ebpf.Variable `ebpf:"g_bpf_header_propagation"`
+	G_bpfLoopEnabled            *ebpf.Variable `ebpf:"g_bpf_loop_enabled"`
+	G_bpfProbeWriteUserEnabled  *ebpf.Variable `ebpf:"g_bpf_probe_write_user_enabled"`
+	G_bpfTraceparentEnabled     *ebpf.Variable `ebpf:"g_bpf_traceparent_enabled"`
+	G_goH2WriteFailStep         *ebpf.Variable `ebpf:"g_go_h2_write_fail_step"`
+	G_tracesCtxV1Enabled        *ebpf.Variable `ebpf:"g_traces_ctx_v1_enabled"`
+	HighRequestVolume           *ebpf.Variable `ebpf:"high_request_volume"`
+	HttpMaxCapturedBytes        *ebpf.Variable `ebpf:"http_max_captured_bytes"`
+	Ip4ip6Prefix                *ebpf.Variable `ebpf:"ip4ip6_prefix"`
+	JvmSamplingIntervalNs       *ebpf.Variable `ebpf:"jvm_sampling_interval_ns"`
+	KafkaMaxCapturedBytes       *ebpf.Variable `ebpf:"kafka_max_captured_bytes"`
+	MaxTransactionTime          *ebpf.Variable `ebpf:"max_transaction_time"`
+	MssqlMaxCapturedBytes       *ebpf.Variable `ebpf:"mssql_max_captured_bytes"`
+	MysqlMaxCapturedBytes       *ebpf.Variable `ebpf:"mysql_max_captured_bytes"`
+	NgxConnectionS_fd           *ebpf.Variable `ebpf:"ngx_connection_s_fd"`
+	NgxConnectionS_sockaddr     *ebpf.Variable `ebpf:"ngx_connection_s_sockaddr"`
+	NgxHttpRequestS_conn        *ebpf.Variable `ebpf:"ngx_http_request_s_conn"`
+	NgxHttpRequestS_upstream    *ebpf.Variable `ebpf:"ngx_http_request_s_upstream"`
+	NgxHttpRevS_conn            *ebpf.Variable `ebpf:"ngx_http_rev_s_conn"`
+	NgxHttpUpstreamS_conn       *ebpf.Variable `ebpf:"ngx_http_upstream_s_conn"`
+	NodejsRuntimeMetricsEnabled *ebpf.Variable `ebpf:"nodejs_runtime_metrics_enabled"`
+	PostgresMaxCapturedBytes    *ebpf.Variable `ebpf:"postgres_max_captured_bytes"`
+	TcpMaxCapturedBytes         *ebpf.Variable `ebpf:"tcp_max_captured_bytes"`
+	Unused                      *ebpf.Variable `ebpf:"unused"`
+	UnusedHttp2                 *ebpf.Variable `ebpf:"unused_http2"`
+	WakeupDataBytes             *ebpf.Variable `ebpf:"wakeup_data_bytes"`
 }
 
 // BpfPrograms contains all programs after they have been loaded into the kernel.
@@ -1196,6 +1497,7 @@ type BpfPrograms struct {
 	ObiKprobeTcpRateCheckAppLimited                    *ebpf.Program `ebpf:"obi_kprobe_tcp_rate_check_app_limited"`
 	ObiKprobeTcpRecvmsg                                *ebpf.Program `ebpf:"obi_kprobe_tcp_recvmsg"`
 	ObiKprobeTcpSendmsg                                *ebpf.Program `ebpf:"obi_kprobe_tcp_sendmsg"`
+	ObiKprobeUdpDestroySock                            *ebpf.Program `ebpf:"obi_kprobe_udp_destroy_sock"`
 	ObiKprobeUdpSendmsg                                *ebpf.Program `ebpf:"obi_kprobe_udp_sendmsg"`
 	ObiKprobeUnixStreamRecvmsg                         *ebpf.Program `ebpf:"obi_kprobe_unix_stream_recvmsg"`
 	ObiKprobeUnixStreamSendmsg                         *ebpf.Program `ebpf:"obi_kprobe_unix_stream_sendmsg"`
@@ -1205,6 +1507,7 @@ type BpfPrograms struct {
 	ObiKretprobeSysConnect                             *ebpf.Program `ebpf:"obi_kretprobe_sys_connect"`
 	ObiKretprobeTcpRecvmsg                             *ebpf.Program `ebpf:"obi_kretprobe_tcp_recvmsg"`
 	ObiKretprobeTcpSendmsg                             *ebpf.Program `ebpf:"obi_kretprobe_tcp_sendmsg"`
+	ObiKretprobeUdpSendmsg                             *ebpf.Program `ebpf:"obi_kretprobe_udp_sendmsg"`
 	ObiKretprobeUnixStreamRecvmsg                      *ebpf.Program `ebpf:"obi_kretprobe_unix_stream_recvmsg"`
 	ObiKretprobeUnixStreamSendmsg                      *ebpf.Program `ebpf:"obi_kretprobe_unix_stream_sendmsg"`
 	ObiLargeBufEmitContinue                            *ebpf.Program `ebpf:"obi_large_buf_emit_continue"`
@@ -1216,18 +1519,28 @@ type BpfPrograms struct {
 	ObiProtocolHttp2GrpcHandleEndFrame                 *ebpf.Program `ebpf:"obi_protocol_http2_grpc_handle_end_frame"`
 	ObiProtocolHttp2GrpcHandleStartFrame               *ebpf.Program `ebpf:"obi_protocol_http2_grpc_handle_start_frame"`
 	ObiProtocolHttp2GrpcHandleStartFrameServer         *ebpf.Program `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server"`
+	ObiProtocolHttp2GrpcHandleStartFrameServerCommit   *ebpf.Program `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server_commit"`
 	ObiProtocolHttp2GrpcHandleStartFrameServerFinalize *ebpf.Program `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server_finalize"`
+	ObiProtocolHttp2GrpcHandleStartFrameServerHuffman  *ebpf.Program `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server_huffman"`
+	ObiProtocolHttp2GrpcHandleStartFrameServerHuffscan *ebpf.Program `ebpf:"obi_protocol_http2_grpc_handle_start_frame_server_huffscan"`
 	ObiProtocolHttpLegacy                              *ebpf.Program `ebpf:"obi_protocol_http_legacy"`
 	ObiProtocolTcp                                     *ebpf.Program `ebpf:"obi_protocol_tcp"`
 	ObiRbAryShift                                      *ebpf.Program `ebpf:"obi_rb_ary_shift"`
+	ObiRbObjAllocRet                                   *ebpf.Program `ebpf:"obi_rb_obj_alloc_ret"`
 	ObiRbObjCallInitKw                                 *ebpf.Program `ebpf:"obi_rb_obj_call_init_kw"`
 	ObiSocketHttpDnsFilter                             *ebpf.Program `ebpf:"obi_socket__http_dns_filter"`
 	ObiSocketHttpFilter                                *ebpf.Program `ebpf:"obi_socket__http_filter"`
 	ObiSocketFltBuf                                    *ebpf.Program `ebpf:"obi_socket_flt_buf"`
+	ObiUprobeBioWrite                                  *ebpf.Program `ebpf:"obi_uprobe_bio_write"`
+	ObiUprobeContextDealloc                            *ebpf.Program `ebpf:"obi_uprobe_context_dealloc"`
 	ObiUprobeContextRun                                *ebpf.Program `ebpf:"obi_uprobe_context_run"`
 	ObiUprobeCopyContext                               *ebpf.Program `ebpf:"obi_uprobe_copy_context"`
+	ObiUprobeNewContext                                *ebpf.Program `ebpf:"obi_uprobe_new_context"`
+	ObiUprobePythonGcDone                              *ebpf.Program `ebpf:"obi_uprobe_python_gc_done"`
+	ObiUprobeSslFree                                   *ebpf.Program `ebpf:"obi_uprobe_ssl_free"`
 	ObiUprobeSslRead                                   *ebpf.Program `ebpf:"obi_uprobe_ssl_read"`
 	ObiUprobeSslReadEx                                 *ebpf.Program `ebpf:"obi_uprobe_ssl_read_ex"`
+	ObiUprobeSslSetBio                                 *ebpf.Program `ebpf:"obi_uprobe_ssl_set_bio"`
 	ObiUprobeSslShutdown                               *ebpf.Program `ebpf:"obi_uprobe_ssl_shutdown"`
 	ObiUprobeSslWrite                                  *ebpf.Program `ebpf:"obi_uprobe_ssl_write"`
 	ObiUprobeSslWriteEx                                *ebpf.Program `ebpf:"obi_uprobe_ssl_write_ex"`
@@ -1269,6 +1582,7 @@ func (p *BpfPrograms) Close() error {
 		p.ObiKprobeTcpRateCheckAppLimited,
 		p.ObiKprobeTcpRecvmsg,
 		p.ObiKprobeTcpSendmsg,
+		p.ObiKprobeUdpDestroySock,
 		p.ObiKprobeUdpSendmsg,
 		p.ObiKprobeUnixStreamRecvmsg,
 		p.ObiKprobeUnixStreamSendmsg,
@@ -1278,6 +1592,7 @@ func (p *BpfPrograms) Close() error {
 		p.ObiKretprobeSysConnect,
 		p.ObiKretprobeTcpRecvmsg,
 		p.ObiKretprobeTcpSendmsg,
+		p.ObiKretprobeUdpSendmsg,
 		p.ObiKretprobeUnixStreamRecvmsg,
 		p.ObiKretprobeUnixStreamSendmsg,
 		p.ObiLargeBufEmitContinue,
@@ -1289,18 +1604,28 @@ func (p *BpfPrograms) Close() error {
 		p.ObiProtocolHttp2GrpcHandleEndFrame,
 		p.ObiProtocolHttp2GrpcHandleStartFrame,
 		p.ObiProtocolHttp2GrpcHandleStartFrameServer,
+		p.ObiProtocolHttp2GrpcHandleStartFrameServerCommit,
 		p.ObiProtocolHttp2GrpcHandleStartFrameServerFinalize,
+		p.ObiProtocolHttp2GrpcHandleStartFrameServerHuffman,
+		p.ObiProtocolHttp2GrpcHandleStartFrameServerHuffscan,
 		p.ObiProtocolHttpLegacy,
 		p.ObiProtocolTcp,
 		p.ObiRbAryShift,
+		p.ObiRbObjAllocRet,
 		p.ObiRbObjCallInitKw,
 		p.ObiSocketHttpDnsFilter,
 		p.ObiSocketHttpFilter,
 		p.ObiSocketFltBuf,
+		p.ObiUprobeBioWrite,
+		p.ObiUprobeContextDealloc,
 		p.ObiUprobeContextRun,
 		p.ObiUprobeCopyContext,
+		p.ObiUprobeNewContext,
+		p.ObiUprobePythonGcDone,
+		p.ObiUprobeSslFree,
 		p.ObiUprobeSslRead,
 		p.ObiUprobeSslReadEx,
+		p.ObiUprobeSslSetBio,
 		p.ObiUprobeSslShutdown,
 		p.ObiUprobeSslWrite,
 		p.ObiUprobeSslWriteEx,
