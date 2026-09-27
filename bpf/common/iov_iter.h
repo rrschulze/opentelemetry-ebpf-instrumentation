@@ -104,6 +104,7 @@ static __always_inline int read_iovec_ctx(iovec_iter_ctx *ctx, unsigned char *bu
     for (u32 i = 0; i < max_segments; i++) {
         // copied through a helper so the verifier forgets its range and merges each round's paths
         bpf_probe_read_kernel(&tot_len, sizeof(tot_len), &tot_len);
+        bpf_clamp_umax(tot_len, k_iovec_max_len); // s390x: re-establish bound after helper clears range
         if (i >= ctx->nr_segs || tot_len >= max_len) {
             break;
         }
